@@ -340,7 +340,7 @@ for each lesson. The tests have descriptive names and comments explaining what t
 | Lesson | Topic                | Status      |
 |--------|----------------------|-------------|
 | 1      | Page Manager         | Done        |
-| 2      | Schema & Serializer  | Not started |
+| 2      | Schema & Serializer  | Done        |
 | 3      | Slotted Page         | Not started |
 | 4      | Heap File            | Not started |
 | 5      | Catalog              | Not started |
