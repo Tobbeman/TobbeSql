@@ -189,7 +189,7 @@ for each lesson. The tests have descriptive names and comments explaining what t
 **Concepts:**
 - A token is a meaningful piece of the SQL: keyword, identifier, number, string, operator
 - The tokenizer reads character by character and groups them into tokens
-- Keywords: SELECT, FROM, WHERE, INSERT, INTO, VALUES, DELETE, CREATE, TABLE, INDEX, ON, AND, OR, NOT, INT, VARCHAR
+- Keywords: SELECT, FROM, WHERE, INSERT, INTO, VALUES, DELETE, CREATE, TABLE, INDEX, ON, AND, OR, INT, VARCHAR
 - Operators: `=`, `<`, `>`, `<>`, `<=`, `>=`, `(`, `)`, `,`, `*`
 - String literals: enclosed in single quotes `'hello'`
 - Number literals: sequences of digits
@@ -209,6 +209,10 @@ for each lesson. The tests have descriptive names and comments explaining what t
 - `Tokenize_StringLiteral_PreservesValue` — a `'hello world'` token should have value `hello world` (no quotes)
 - `Tokenize_Operators_RecognizedCorrectly` — `<=`, `>=`, `<>` should each be a single token, not two
 - `Tokenize_KeywordsAreCaseInsensitive` — `select`, `SELECT`, `Select` should all produce a Keyword token
+- `Tokenize_CreateTable_ProducesCorrectTokens` — tokenize `CREATE TABLE users (id INT, name VARCHAR)`, covers Create, Table, Int, Varchar keywords
+- `Tokenize_Delete_ProducesCorrectTokens` — tokenize `DELETE FROM users WHERE id = 5`, covers Delete keyword
+- `Tokenize_CreateIndex_ProducesCorrectTokens` — tokenize `CREATE INDEX idx_id ON users (id)`, covers Index, On keywords
+- `Tokenize_WhereWithAndOr_ProducesCorrectTokens` — tokenize a SELECT with AND and OR in the WHERE clause
 
 ---
 
@@ -344,7 +348,7 @@ for each lesson. The tests have descriptive names and comments explaining what t
 | 3      | Slotted Page         | Done        |
 | 4      | Heap File            | Done        |
 | 5      | Catalog              | Done        |
-| 6      | SQL Tokenizer        | Not started |
+| 6      | SQL Tokenizer        | Done        |
 | 7      | SQL Parser           | Not started |
 | 8      | Query Executor       | Not started |
 | 9      | REPL                 | Not started |
