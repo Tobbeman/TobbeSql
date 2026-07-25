@@ -58,7 +58,6 @@ public class RowSerializer
 
         writer.Seek(0, SeekOrigin.Begin);
         writer.Write((short)lenght);
-        writer.Flush();
         return stream.ToArray();
     }
 
