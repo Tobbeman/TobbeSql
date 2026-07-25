@@ -343,7 +343,7 @@ for each lesson. The tests have descriptive names and comments explaining what t
 | 2      | Schema & Serializer  | Done        |
 | 3      | Slotted Page         | Done        |
 | 4      | Heap File            | Done        |
-| 5      | Catalog              | Not started |
+| 5      | Catalog              | Done        |
 | 6      | SQL Tokenizer        | Not started |
 | 7      | SQL Parser           | Not started |
 | 8      | Query Executor       | Not started |
