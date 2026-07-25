@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="TobbeSQL.Tests/TobbeSQL.Tests.csproj" />
+  <Project Path="TobbeSQL/TobbeSQL.csproj" />
+</Solution>
