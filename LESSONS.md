@@ -349,7 +349,7 @@ for each lesson. The tests have descriptive names and comments explaining what t
 | 4      | Heap File            | Done        |
 | 5      | Catalog              | Done        |
 | 6      | SQL Tokenizer        | Done        |
-| 7      | SQL Parser           | Not started |
+| 7      | SQL Parser           | Done        |
 | 8      | Query Executor       | Not started |
 | 9      | REPL                 | Not started |
 | 10     | B-Tree Index         | Not started |
