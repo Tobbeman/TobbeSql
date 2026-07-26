@@ -87,6 +87,11 @@ public class Catalog
     }
 
     /// <summary>
+    /// Returns all table names in the catalog.
+    /// </summary>
+    public IEnumerable<string> TableNames => _tables.Keys;
+
+    /// <summary>
     /// Saves the catalog to catalog.json in the directory.
     ///
     /// You'll need a serializable representation since Schema/ColumnDefinition aren't

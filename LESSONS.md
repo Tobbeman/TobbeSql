@@ -283,22 +283,24 @@ your implementation progress.
 
 ---
 
-## Lesson 9: REPL (Interactive Shell)
+## Lesson 9: CLI (Command-Line Interface)
 
-**Goal:** Build a simple interactive command line where you type SQL and see results.
+**Goal:** Accept a SQL command as a command-line argument, execute it, and print the result.
 
 **Concepts:**
-- Read a line, parse it, execute it, print the result, repeat
-- Format SELECT results as a simple text table
-- Print errors nicely (parse errors, unknown table, etc.)
-- Special commands: `.quit` to exit, `.tables` to list tables
+- The binary takes a single SQL statement as a CLI argument: `dotnet run -- "SELECT * FROM users"`
+- Parse the argument, execute it, print the result to stdout
+- Format SELECT results as a simple text table (column headers + rows)
+- Print errors nicely to stderr (parse errors, unknown table, etc.)
+- Exit code 0 on success, 1 on error
+- Special command: `.tables` lists all tables in the catalog
 
 **Files to modify:**
-- `TobbeSQL/Program.cs` — the main entry point becomes the REPL
+- `TobbeSQL/Program.cs` — the main entry point reads `args[0]` and executes it
 
 **Tests:**
-- No unit tests for this lesson — it's a thin interactive layer over the executor
-- Test manually by running the program and executing the SQL sequence from Lesson 8
+- No unit tests for this lesson — it's a thin CLI layer over the executor
+- Test manually by running SQL commands from the terminal
 
 ---
 
@@ -351,5 +353,5 @@ your implementation progress.
 | 6      | SQL Tokenizer        | Done        |
 | 7      | SQL Parser           | Done        |
 | 8      | Query Executor       | Done        |
-| 9      | REPL                 | Not started |
+| 9      | CLI                  | Done        |
 | 10     | B-Tree Index         | Not started |
