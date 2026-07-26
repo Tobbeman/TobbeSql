@@ -350,6 +350,6 @@ your implementation progress.
 | 5      | Catalog              | Done        |
 | 6      | SQL Tokenizer        | Done        |
 | 7      | SQL Parser           | Done        |
-| 8      | Query Executor       | Not started |
+| 8      | Query Executor       | Done        |
 | 9      | REPL                 | Not started |
 | 10     | B-Tree Index         | Not started |
