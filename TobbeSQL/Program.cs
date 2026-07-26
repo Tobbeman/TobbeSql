@@ -1,4 +1,5 @@
-﻿using TobbeSQL.Execution;
+﻿using System.Diagnostics;
+using TobbeSQL.Execution;
 using TobbeSQL.Parser;
 using TobbeSQL.Storage;
 
@@ -12,7 +13,8 @@ if (args.Length == 0)
 var dbPath = Path.Combine(Directory.GetCurrentDirectory(), "data");
 var catalog = new Catalog(dbPath);
 var input = args[0];
-
+int exitCode;
+var watch = Stopwatch.StartNew();
 if (input == ".tables")
 {
     foreach (var name in catalog.TableNames)
@@ -46,10 +48,13 @@ try
         Console.WriteLine($"{result.AffectedRows} row(s) affected.");
     }
 
-    return 0;
+    exitCode = 0;
 }
 catch (Exception ex)
 {
     Console.Error.WriteLine($"Error: {ex.Message}");
-    return 1;
+    exitCode = 1;
 }
+
+Console.WriteLine($"Elapsed: {watch.Elapsed}");
+return exitCode;
