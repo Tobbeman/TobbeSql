@@ -79,23 +79,28 @@ public class QueryExecutor
     private QueryResult ExecuteInsert(InsertStatement stmt)
     {
         var (schema, dataFilePath) = _catalog.GetTable(stmt.TableName);
-        var values = new object[schema.Columns.Count];
-        for (var i = 0; i < schema.Columns.Count; i++)
-        {
-            var tableColumn = schema.Columns[i];
-            var stmtIndex = stmt.Columns.FindIndex(s => s == tableColumn.Name);
-            if (stmtIndex == -1)
-            {
-                throw new Exception($"Could not find column at insert: {tableColumn.Name}");
-            }
-
-            values[i] = stmt.Values[stmtIndex];
-        }
-        var serialized = new RowSerializer().Serialize(schema, values);
         using var pageManager = new PageManager(dataFilePath);
         var heapFile = new HeapFile(pageManager);
-        heapFile.Insert(serialized);
-        return new QueryResult { AffectedRows = 1 };
+
+        foreach (var valueList in stmt.Values)
+        {
+            var values = new object[schema.Columns.Count];
+            for (var i = 0; i < schema.Columns.Count; i++)
+            {
+                var tableColumn = schema.Columns[i];
+                var stmtIndex = stmt.Columns.FindIndex(s => s == tableColumn.Name);
+                if (stmtIndex == -1)
+                {
+                    throw new Exception($"Could not find column at insert: {tableColumn.Name}");
+                }
+
+                values[i] = valueList[stmtIndex];
+            }
+            var serialized = new RowSerializer().Serialize(schema, values);
+            heapFile.Insert(serialized);
+        }
+
+        return new QueryResult { AffectedRows = stmt.Values.Count };
     }
 
     /// <summary>

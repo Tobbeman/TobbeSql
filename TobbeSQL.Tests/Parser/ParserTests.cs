@@ -33,9 +33,26 @@ public class ParserTests
         Assert.NotNull(stmt);
         Assert.Equal("users", stmt.TableName);
         Assert.Equal(new List<string> { "id", "name" }, stmt.Columns);
+        Assert.Single(stmt.Values);
+        Assert.Equal(1, stmt.Values[0][0]);
+        Assert.Equal("Alice", stmt.Values[0][1]);
+    }
+
+    [Fact]
+    public void Parse_Insert_SupportSeveralValues()
+    {
+        var stmt =
+            Parse("INSERT INTO users (id, name) VALUES (1, 'Alice'), (2, 'Bob')")
+            as InsertStatement;
+
+        Assert.NotNull(stmt);
+        Assert.Equal("users", stmt.TableName);
+        Assert.Equal(new List<string> { "id", "name" }, stmt.Columns);
         Assert.Equal(2, stmt.Values.Count);
-        Assert.Equal(1, stmt.Values[0]);
-        Assert.Equal("Alice", stmt.Values[1]);
+        Assert.Equal(1, stmt.Values[0][0]);
+        Assert.Equal("Alice", stmt.Values[0][1]);
+        Assert.Equal(2, stmt.Values[1][0]);
+        Assert.Equal("Bob", stmt.Values[1][1]);
     }
 
     [Fact]

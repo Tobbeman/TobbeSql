@@ -1,3 +1,4 @@
+using System.Reflection.Metadata;
 using TobbeSQL.Parser.Ast;
 using TobbeSQL.Storage;
 
@@ -126,7 +127,7 @@ public class SqlParser
         Expect(TokenType.Into);
         var tableName = Expect(TokenType.Identifier).Value;
         var columns = new List<string>();
-        var values = new List<object>();
+        var values = new List<List<object>>();
 
         Expect(TokenType.LeftParen);
         while (true)
@@ -140,18 +141,33 @@ public class SqlParser
         }
 
         Expect(TokenType.Values);
-
-        Expect(TokenType.LeftParen);
-        while (true)
+        var keepGoing = true;
+        while (keepGoing)
         {
-            var columnValueToken = Expect(TokenType.Number, TokenType.StringLiteral);
-            values.Add(ParseValue(columnValueToken));
-
-            if (Expect(TokenType.Comma, TokenType.RightParen).Type == TokenType.RightParen)
+            var currentValues = new List<object>();
+            Expect(TokenType.LeftParen);
+            while (true)
             {
-                break;
+                var columnValueToken = Expect(TokenType.Number, TokenType.StringLiteral);
+                currentValues.Add(ParseValue(columnValueToken));
+
+                if (Expect(TokenType.Comma, TokenType.RightParen).Type == TokenType.RightParen)
+                {
+                    break;
+                }
+            }
+            values.Add(currentValues);
+
+            if (HasMore() && Current().Type == TokenType.Comma)
+            {
+                Advance();
+            }
+            else
+            {
+                keepGoing = false;
             }
         }
+
         return new InsertStatement(tableName, columns, values);
     }
 
