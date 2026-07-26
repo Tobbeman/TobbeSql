@@ -11,10 +11,10 @@ the files, classes, and method stubs with comments describing what each method s
 
 After each lesson there are suggested manual tests to verify your implementation works.
 
-Claude will also create a test project (`TobbeSQL.Tests/`, using xUnit) with test stubs
-for each lesson. The tests have descriptive names and comments explaining what to assert —
-**you write the test body yourself** alongside the implementation. Run tests with
-`dotnet test` from the repo root.
+Claude will also create a test project (`TobbeSQL.Tests/`, using xUnit) with tests
+for each lesson. **Claude implements the test bodies** with full assertions so they
+serve as a specification — you can run them immediately with `dotnet test` to check
+your implementation progress.
 
 ---
 
