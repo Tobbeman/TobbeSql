@@ -61,7 +61,7 @@ public class Catalog
 
         var dataFile = Path.Combine(_directoryPath, $"{schema.TableName}.db");
         _tables.Add(schema.TableName, (schema, dataFile));
-        File.Create(dataFile);
+        File.Create(dataFile).Dispose();
         Save();
     }
 
