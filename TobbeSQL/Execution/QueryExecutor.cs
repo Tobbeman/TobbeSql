@@ -37,6 +37,7 @@ public class QueryExecutor
         using var pageManager = new PageManager(dataFilePath);
         var heapFile = new HeapFile(pageManager);
 
+        var serializer = new RowSerializer();
         var indexedColumns = schema
             .Columns.Select(
                 (c, i) => (Index: i, DataFile: _catalog.GetIndex(schema.TableName, c.Name))
@@ -59,7 +60,7 @@ public class QueryExecutor
 
                 values[i] = valueList[stmtIndex];
             }
-            var serialized = new RowSerializer().Serialize(schema, values);
+            var serialized = serializer.Serialize(schema, values);
             var rowId = heapFile.Insert(serialized);
 
             foreach (var (colIdx, indexPm) in indexedColumns)
