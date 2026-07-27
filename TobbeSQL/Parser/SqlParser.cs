@@ -86,8 +86,7 @@ public class SqlParser
         }
 
         Expect(TokenType.Values);
-        var keepGoing = true;
-        while (keepGoing)
+        do
         {
             var currentValues = new List<object>();
             Expect(TokenType.LeftParen);
@@ -102,16 +101,7 @@ public class SqlParser
                 }
             }
             values.Add(currentValues);
-
-            if (HasMore() && Current().Type == TokenType.Comma)
-            {
-                Advance();
-            }
-            else
-            {
-                keepGoing = false;
-            }
-        }
+        } while (HasMore() && Current().Type == TokenType.Comma && Advance() is not null);
 
         return new InsertStatement(tableName, columns, values);
     }
