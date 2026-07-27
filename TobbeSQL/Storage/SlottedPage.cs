@@ -27,7 +27,9 @@ public class SlottedPage
 
     public int SlotCount => BitConverter.ToUInt16(_data, 0);
 
-    public int FreeSpace => BitConverter.ToUInt16(_data, 2) - (HeaderSize + SlotCount * SlotSize);
+    private int FreeSpaceOffset => BitConverter.ToUInt16(_data, 2);
+
+    public int FreeSpace => FreeSpaceOffset - (HeaderSize + SlotCount * SlotSize);
 
     public int InsertRow(byte[] rowData)
     {
@@ -38,8 +40,7 @@ public class SlottedPage
 
         var slotCount = SlotCount;
 
-        var freeSpaceOffset = BitConverter.ToUInt16(_data, 2);
-        var offset = freeSpaceOffset - rowData.Length;
+        var offset = FreeSpaceOffset - rowData.Length;
         WriteToArray(rowData, _data, offset);
 
         var slotPosition = HeaderSize + slotCount * SlotSize;
