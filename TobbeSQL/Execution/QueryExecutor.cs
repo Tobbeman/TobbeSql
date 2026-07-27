@@ -87,38 +87,34 @@ public class QueryExecutor
 
         var selectAll = stmt.Columns[0] == "*";
 
-        var indexedColumns = schema
-            .Columns.Where(c => stmt.WhereClause is not null)
-            .Select(c =>
-                (
-                    c.Name,
-                    DataFile: _catalog.GetIndex(schema.TableName, c.Name),
-                    Value: ExpressionEvaluator.IndexComparison(stmt.WhereClause!, c.Name)
-                )
-            )
-            .Where(x => x.DataFile is not null)
-            .Where(x => x.Value is not null)
-            .Where(x => selectAll || stmt.Columns.Any(c => c == x.Name))
-            .Select(x => (x.Name, new PageManager(x.DataFile!), (int)x.Value!))
-            .ToList();
-
         var result = new QueryResult
         {
             Columns = selectAll ? [.. schema.Columns.Select(c => c.Name)] : stmt.Columns,
         };
 
-        if (indexedColumns.Count != 0)
+        if (stmt.WhereClause is not null)
         {
-            var (name, indexPM, key) = indexedColumns.First();
-            var tree = new BTree(indexPM);
-            foreach (var rowId in tree.Search(key))
-            {
-                var data = heapFile.GetRow(rowId);
-                var values = serializer.Deserialize(schema, data!);
-                result.Rows.Add(values);
-            }
+            var indexMatch = schema
+                .Columns.Select(c =>
+                    (
+                        DataFile: _catalog.GetIndex(schema.TableName, c.Name),
+                        Value: ExpressionEvaluator.IndexComparison(stmt.WhereClause, c.Name)
+                    )
+                )
+                .FirstOrDefault(x => x.DataFile is not null && x.Value is not null);
 
-            return result;
+            if (indexMatch.DataFile is not null)
+            {
+                using var indexPM = new PageManager(indexMatch.DataFile);
+                var tree = new BTree(indexPM);
+                foreach (var rowId in tree.Search((int)indexMatch.Value!))
+                {
+                    var data = heapFile.GetRow(rowId);
+                    var values = serializer.Deserialize(schema, data!);
+                    result.Rows.Add(values);
+                }
+                return result;
+            }
         }
 
         foreach (var (rowId, data) in heapFile.Scan())
