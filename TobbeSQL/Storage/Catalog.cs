@@ -23,7 +23,6 @@ public class Catalog
         string IndexName,
         string TableName,
         string ColumnName,
-        int RootPageNumber,
         string DataFilePath
     )> _indexes = new();
 
@@ -50,12 +49,7 @@ public class Catalog
         Load();
     }
 
-    public string CreateIndex(
-        string indexName,
-        string tableName,
-        string columnName,
-        int rootPageNumber
-    )
+    public string CreateIndex(string indexName, string tableName, string columnName)
     {
         if (_indexes.Any(i => i.IndexName == indexName))
         {
@@ -63,21 +57,17 @@ public class Catalog
         }
         var dataFile = Path.Combine(_directoryPath, $"idx_{indexName}.db");
         File.Create(dataFile).Dispose();
-        _indexes.Add(new(indexName, tableName, columnName, rootPageNumber, dataFile));
+        _indexes.Add(new(indexName, tableName, columnName, dataFile));
         Save();
         return dataFile;
     }
 
-    public (int RootPageNumber, string DataFilePath)? GetIndex(string tableName, string columnName)
+    public string? GetIndex(string tableName, string columnName)
     {
-        var (IndexName, TableName, ColumnName, RootPageNumber, DataFilePath) =
-            _indexes.FirstOrDefault(i => i.TableName == tableName && i.ColumnName == columnName);
-        if (IndexName is null)
-        {
-            return null;
-        }
-
-        return (RootPageNumber, DataFilePath);
+        var match = _indexes.FirstOrDefault(i =>
+            i.TableName == tableName && i.ColumnName == columnName
+        );
+        return match.IndexName is null ? null : match.DataFilePath;
     }
 
     /// <summary>
@@ -160,7 +150,6 @@ public class Catalog
                             Name = i.IndexName,
                             TableName = i.TableName,
                             ColumnName = i.ColumnName,
-                            RootPageNumber = i.RootPageNumber,
                             DataFilePath = i.DataFilePath,
                         }),
                     ],
@@ -195,9 +184,7 @@ public class Catalog
         );
         _indexes =
         [
-            .. catalog.Indexes.Select(i =>
-                (i.Name, i.TableName, i.ColumnName, i.RootPageNumber, i.DataFilePath)
-            ),
+            .. catalog.Indexes.Select(i => (i.Name, i.TableName, i.ColumnName, i.DataFilePath)),
         ];
     }
 
@@ -219,7 +206,6 @@ public class Catalog
         public required string Name { get; set; }
         public required string TableName { get; set; }
         public required string ColumnName { get; set; }
-        public required int RootPageNumber { get; set; }
         public required string DataFilePath { get; set; }
     }
 }

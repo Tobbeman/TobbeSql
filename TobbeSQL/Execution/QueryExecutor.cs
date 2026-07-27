@@ -229,8 +229,7 @@ public class QueryExecutor
         var indexDataFilePath = _catalog.CreateIndex(
             stmt.IndexName,
             stmt.TableName,
-            stmt.ColumnName,
-            0
+            stmt.ColumnName
         );
         using var indexPageManager = new PageManager(indexDataFilePath);
         var tree = BTree.Create(indexPageManager);
@@ -244,5 +243,7 @@ public class QueryExecutor
             var row = serializer.Deserialize(schema, data);
             tree.Insert((int)row[columnIndex], rowId);
         }
+
+        return new QueryResult { Message = $"Index created: {stmt.IndexName}" };
     }
 }

@@ -18,19 +18,17 @@ namespace TobbeSQL.Storage;
 public class BTree
 {
     private readonly PageManager _pageManager;
-    private int _rootPageNumber;
 
     /// <summary>
-    /// Opens an existing B-tree with the given root page number.
+    /// Opens an existing B-tree. The root is always page 0.
     /// </summary>
-    public BTree(PageManager pageManager, int rootPageNumber)
+    public BTree(PageManager pageManager)
     {
         _pageManager = pageManager;
-        _rootPageNumber = rootPageNumber;
     }
 
     /// <summary>
-    /// Creates a new, empty B-tree. Allocates one page for the root (an empty leaf).
+    /// Creates a new, empty B-tree. Allocates page 0 as the root (an empty leaf).
     /// Returns the new BTree instance.
     /// </summary>
     public static BTree Create(PageManager pageManager)
@@ -39,13 +37,8 @@ public class BTree
         var data = pageManager.ReadPage(rootPage);
         BTreeNode.InitializeLeaf(data);
         pageManager.WritePage(rootPage, data);
-        return new BTree(pageManager, rootPage);
+        return new BTree(pageManager);
     }
-
-    /// <summary>
-    /// The page number of the current root node.
-    /// </summary>
-    public int RootPageNumber => _rootPageNumber;
 
     /// <summary>
     /// Searches for all RowIds matching the given key.
@@ -61,7 +54,7 @@ public class BTree
     /// </summary>
     public List<RowId> Search(int key)
     {
-        var pageNumber = RootPageNumber;
+        var pageNumber = 0;
         var rows = new List<RowId>();
         BTreeNode node;
         while (true)
@@ -106,7 +99,7 @@ public class BTree
     /// </summary>
     public void Insert(int key, RowId rowId)
     {
-        var pageNumber = RootPageNumber;
+        var pageNumber = 0;
         var path = new List<(int PageNumber, BTreeNode Node)>();
         BTreeNode node;
 
@@ -204,11 +197,15 @@ public class BTree
             newChildPage = newInternalPageNum;
         }
 
-        var newRootPageNum = _pageManager.AllocatePage();
-        var newRootData = _pageManager.ReadPage(newRootPageNum);
-        BTreeNode.InitializeInternal(newRootData, promoteKey, path[0].PageNumber, newChildPage);
-        _pageManager.WritePage(newRootPageNum, newRootData);
-        _rootPageNumber = newRootPageNum;
+        // Root split: copy current root (page 0) to a new page, then overwrite page 0
+        var copyPageNum = _pageManager.AllocatePage();
+        var rootData = _pageManager.ReadPage(0);
+        _pageManager.WritePage(copyPageNum, rootData);
+
+        // The left child is the copy, right child is newChildPage
+        var newRootData = new byte[PageManager.PageSize];
+        BTreeNode.InitializeInternal(newRootData, promoteKey, copyPageNum, newChildPage);
+        _pageManager.WritePage(0, newRootData);
     }
 
     /// <summary>
@@ -224,7 +221,7 @@ public class BTree
     /// </summary>
     public void Delete(int key, RowId rowId)
     {
-        var pageNumber = RootPageNumber;
+        var pageNumber = 0;
         BTreeNode node;
         while (true)
         {
