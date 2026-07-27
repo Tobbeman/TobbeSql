@@ -1,3 +1,3 @@
 namespace TobbeSQL.Parser.Ast;
 
-public abstract class Statement { }
+public abstract record Statement;

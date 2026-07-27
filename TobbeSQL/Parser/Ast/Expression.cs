@@ -1,31 +1,9 @@
 namespace TobbeSQL.Parser.Ast;
 
-public abstract class Expression { }
+public abstract record Expression;
 
-public class ComparisonExpression : Expression
-{
-    public string ColumnName { get; }
-    public TokenType Operator { get; }
-    public object Value { get; }
+public record ComparisonExpression(string ColumnName, TokenType Operator, object Value)
+    : Expression;
 
-    public ComparisonExpression(string columnName, TokenType op, object value)
-    {
-        ColumnName = columnName;
-        Operator = op;
-        Value = value;
-    }
-}
-
-public class LogicalExpression : Expression
-{
-    public Expression Left { get; }
-    public TokenType Operator { get; }
-    public Expression Right { get; }
-
-    public LogicalExpression(Expression left, TokenType op, Expression right)
-    {
-        Left = left;
-        Operator = op;
-        Right = right;
-    }
-}
+public record LogicalExpression(Expression Left, TokenType Operator, Expression Right)
+    : Expression;
