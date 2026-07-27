@@ -215,6 +215,34 @@ public class QueryExecutor
     /// </summary>
     private QueryResult ExecuteCreateIndex(CreateIndexStatement stmt)
     {
-        return new QueryResult { Message = "Not implemented" };
+        var (schema, tableDataFilePath) = _catalog.GetTable(stmt.TableName);
+        var columnIndex = schema.Columns.FindIndex(c => c.Name == stmt.ColumnName);
+        if (columnIndex == -1)
+        {
+            throw new Exception($"Column does not exist: {stmt.ColumnName}");
+        }
+        if (schema.Columns[columnIndex].Type != ColumnType.Integer)
+        {
+            throw new Exception("Only support indexes on integer type columns");
+        }
+
+        var indexDataFilePath = _catalog.CreateIndex(
+            stmt.IndexName,
+            stmt.TableName,
+            stmt.ColumnName,
+            0
+        );
+        using var indexPageManager = new PageManager(indexDataFilePath);
+        var tree = BTree.Create(indexPageManager);
+
+        using var tablePageManager = new PageManager(tableDataFilePath);
+        var heapFile = new HeapFile(tablePageManager);
+        var serializer = new RowSerializer();
+
+        foreach (var (rowId, data) in heapFile.Scan())
+        {
+            var row = serializer.Deserialize(schema, data);
+            tree.Insert((int)row[columnIndex], rowId);
+        }
     }
 }

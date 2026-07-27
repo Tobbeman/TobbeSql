@@ -19,6 +19,13 @@ public class Catalog
 
     // Maps table name → (Schema, data file path)
     private Dictionary<string, (Schema schema, string dataFilePath)> _tables = new();
+    private List<(
+        string IndexName,
+        string TableName,
+        string ColumnName,
+        int RootPageNumber,
+        string DataFilePath
+    )> _indexes = new();
 
     /// <summary>
     /// Creates a Catalog that stores its metadata in the given directory.
@@ -41,6 +48,36 @@ public class Catalog
         }
 
         Load();
+    }
+
+    public string CreateIndex(
+        string indexName,
+        string tableName,
+        string columnName,
+        int rootPageNumber
+    )
+    {
+        if (_indexes.Any(i => i.IndexName == indexName))
+        {
+            throw new Exception($"Index already exists: {indexName}");
+        }
+        var dataFile = Path.Combine(_directoryPath, $"idx_{indexName}.db");
+        File.Create(dataFile).Dispose();
+        _indexes.Add(new(indexName, tableName, columnName, rootPageNumber, dataFile));
+        Save();
+        return dataFile;
+    }
+
+    public (int RootPageNumber, string DataFilePath)? GetIndex(string tableName, string columnName)
+    {
+        var (IndexName, TableName, ColumnName, RootPageNumber, DataFilePath) =
+            _indexes.FirstOrDefault(i => i.TableName == tableName && i.ColumnName == columnName);
+        if (IndexName is null)
+        {
+            return null;
+        }
+
+        return (RootPageNumber, DataFilePath);
     }
 
     /// <summary>
@@ -116,6 +153,17 @@ public class Catalog
                             Columns = t.Value.schema.Columns,
                         }),
                     ],
+                    Indexes =
+                    [
+                        .. _indexes.Select(i => new IndexEntry
+                        {
+                            Name = i.IndexName,
+                            TableName = i.TableName,
+                            ColumnName = i.ColumnName,
+                            RootPageNumber = i.RootPageNumber,
+                            DataFilePath = i.DataFilePath,
+                        }),
+                    ],
                 }
             )
         );
@@ -145,11 +193,18 @@ public class Catalog
             t => t.TableName,
             t => (new Schema(t.TableName, t.Columns), t.DataFilePath)
         );
+        _indexes =
+        [
+            .. catalog.Indexes.Select(i =>
+                (i.Name, i.TableName, i.ColumnName, i.RootPageNumber, i.DataFilePath)
+            ),
+        ];
     }
 
     record CatalogFile
     {
-        public List<CatalogEntry> Tables { get; set; } = [];
+        public required List<CatalogEntry> Tables { get; set; } = [];
+        public required List<IndexEntry> Indexes { get; set; } = [];
     };
 
     record CatalogEntry
@@ -157,5 +212,14 @@ public class Catalog
         public required string TableName { get; set; }
         public required string DataFilePath { get; set; }
         public required List<ColumnDefinition> Columns { get; set; }
+    }
+
+    record IndexEntry
+    {
+        public required string Name { get; set; }
+        public required string TableName { get; set; }
+        public required string ColumnName { get; set; }
+        public required int RootPageNumber { get; set; }
+        public required string DataFilePath { get; set; }
     }
 }

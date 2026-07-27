@@ -306,7 +306,7 @@ your implementation progress.
 
 ## Lesson 10: B-Tree Index
 
-**Goal:** Implement a B-tree stored on pages for fast lookups by indexed columns.
+**Goal:** Implement a B-tree stored on pages for fast lookups by indexed columns, then wire it into the executor.
 
 **Concepts:**
 - A B-tree is a balanced search tree optimized for disk (each node = one page)
@@ -316,15 +316,17 @@ your implementation progress.
 - The executor should use the index when a WHERE clause matches an indexed column
 - CREATE INDEX builds the tree by scanning existing rows and inserting each one
 
+**Part A: B-tree data structure**
+
 **Files to create:**
 - `TobbeSQL/Storage/BTree.cs` — the B-tree implementation
 - `TobbeSQL/Storage/BTreeNode.cs` — represents one node (one page)
 
 **BTree should have:**
 - Constructor that takes a `PageManager` and the root page number
-- `Search(object key)` → returns list of RowIds matching the key
-- `Insert(object key, RowId rowId)`
-- `Delete(object key, RowId rowId)`
+- `Search(int key)` → returns list of RowIds matching the key
+- `Insert(int key, RowId rowId)`
+- `Delete(int key, RowId rowId)`
 - Static `Create(PageManager pm)` → allocates root page, returns new BTree
 
 **BTreeNode should have:**
@@ -338,6 +340,35 @@ your implementation progress.
 - `Search_NonExistentKey_ReturnsEmpty` — search for a key that was never inserted, verify empty result
 - `InsertEnoughToSplit_StillFindsAllKeys` — insert 200+ entries (forces node splits), verify all are searchable
 - `Delete_RemovesKeyFromSearch` — insert a key, delete it, verify search returns empty
+
+**Part B: Integration with executor and catalog**
+
+**Catalog changes:**
+- Add index metadata storage: maps (tableName, columnName) → (indexFilePath, rootPageNumber)
+- `CreateIndex(indexName, tableName, columnName, rootPageNumber)` — saves index info + persists to JSON
+- `GetIndex(tableName, columnName)` → returns index file path and root page if one exists, null otherwise
+- Persist indexes in catalog.json alongside tables
+
+**Executor changes — ExecuteCreateIndex:**
+1. Create a new index file (e.g., `idx_{indexName}.db`) with its own PageManager
+2. `BTree.Create(pageManager)` to initialize an empty tree
+3. Scan all existing rows in the table's heap file
+4. For each row: deserialize, extract the indexed column value, `tree.Insert(key, rowId)`
+5. Save the index metadata to the catalog
+
+**Executor changes — ExecuteSelect (index-accelerated WHERE):**
+1. If WHERE is a simple equality comparison (`column = value`), check if an index exists on that column
+2. If yes: open the index file, `tree.Search(key)` → get list of RowIds
+3. Fetch each row directly via `heapFile.GetRow(rowId)` — no full scan needed
+4. If no index: fall back to the existing full heap scan
+
+**Executor changes — ExecuteInsert:**
+- After inserting a row into the heap file, check for indexes on the table
+- For each indexed column, `tree.Insert(columnValue, newRowId)`
+
+**Executor changes — ExecuteDelete:**
+- After deleting a row, check for indexes on the table
+- For each indexed column, `tree.Delete(columnValue, rowId)`
 
 ---
 
