@@ -6,7 +6,7 @@ namespace TobbeSQL.Execution;
 
 public static class ExpressionEvaluator
 {
-    public static bool Evaluate(Expression expression, Schema schema, object[] rowValues)
+    public static Func<object[], bool> Compile(Expression expression, Schema schema)
     {
         var columns = schema.Columns;
         switch (expression)
@@ -19,28 +19,31 @@ public static class ExpressionEvaluator
                         $"Could not match expression no such column: {expr.ColumnName}"
                     );
                 }
-                var rowValue = rowValues[columnIndex];
 
                 return expr.Operator switch
                 {
-                    TokenType.Equals => rowValue.Equals(expr.Value),
-                    TokenType.NotEqual => !rowValue.Equals(expr.Value),
-                    TokenType.LessThan => ((IComparable)rowValue).CompareTo(expr.Value) < 0,
-                    TokenType.GreaterThan => ((IComparable)rowValue).CompareTo(expr.Value) > 0,
-                    TokenType.LessThanOrEqual => ((IComparable)rowValue).CompareTo(expr.Value) <= 0,
-                    TokenType.GreaterThanOrEqual => ((IComparable)rowValue).CompareTo(expr.Value)
-                        >= 0,
+                    TokenType.Equals => rowValues => rowValues[columnIndex].Equals(expr.Value),
+                    TokenType.NotEqual => rowValues => !rowValues[columnIndex].Equals(expr.Value),
+                    TokenType.LessThan => rowValues =>
+                        ((IComparable)rowValues[columnIndex]).CompareTo(expr.Value) < 0,
+                    TokenType.GreaterThan => rowValues =>
+                        ((IComparable)rowValues[columnIndex]).CompareTo(expr.Value) > 0,
+                    TokenType.LessThanOrEqual => rowValues =>
+                        ((IComparable)rowValues[columnIndex]).CompareTo(expr.Value) <= 0,
+                    TokenType.GreaterThanOrEqual => rowValues =>
+                        ((IComparable)rowValues[columnIndex]).CompareTo(expr.Value) >= 0,
                     _ => throw new Exception(
                         $"Could not match expression operator: {expr.Operator}"
                     ),
                 };
             case LogicalExpression expr:
+                var left = Compile(expr.Left, schema);
+                var right = Compile(expr.Right, schema);
+
                 return expr.Operator switch
                 {
-                    TokenType.And => Evaluate(expr.Left, schema, rowValues)
-                        && Evaluate(expr.Right, schema, rowValues),
-                    TokenType.Or => Evaluate(expr.Left, schema, rowValues)
-                        || Evaluate(expr.Right, schema, rowValues),
+                    TokenType.And => rowValues => left(rowValues) && right(rowValues),
+                    TokenType.Or => rowValues => left(rowValues) || right(rowValues),
                     _ => throw new Exception(
                         $"Could not match expression operator: {expr.Operator}"
                     ),

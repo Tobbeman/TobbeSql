@@ -89,6 +89,10 @@ public class QueryExecutor(Catalog catalog)
 
         var result = new QueryResult { Columns = columns };
 
+        var predicate = stmt.WhereClause is not null
+            ? ExpressionEvaluator.Compile(stmt.WhereClause, schema)
+            : (_) => true;
+
         if (stmt.WhereClause is not null)
         {
             var (DataFile, Value) = schema
@@ -116,10 +120,7 @@ public class QueryExecutor(Catalog catalog)
         foreach (var (rowId, data) in heapFile.Scan())
         {
             var values = serializer.Deserialize(schema, data);
-            if (
-                stmt.WhereClause is not null
-                && !ExpressionEvaluator.Evaluate(stmt.WhereClause, schema, values)
-            )
+            if (stmt.WhereClause is not null && !predicate(values))
             {
                 continue;
             }
@@ -139,6 +140,9 @@ public class QueryExecutor(Catalog catalog)
             .Where(x => x.DataFile is not null)
             .Select(x => (x.Index, PageManager: new PageManager(x.DataFile!)))
             .ToList();
+        var predicate = stmt.WhereClause is not null
+            ? ExpressionEvaluator.Compile(stmt.WhereClause, schema)
+            : (_) => true;
         using var pageManager = new PageManager(dataFilePath);
         var heapFile = new HeapFile(pageManager);
         var serializer = new RowSerializer();
@@ -148,10 +152,7 @@ public class QueryExecutor(Catalog catalog)
             object[]? values = null;
             object[] GetValues() => values ??= serializer.Deserialize(schema, data);
 
-            if (
-                stmt.WhereClause is not null
-                && !ExpressionEvaluator.Evaluate(stmt.WhereClause, schema, GetValues())
-            )
+            if (stmt.WhereClause is not null && !predicate(GetValues()))
             {
                 continue;
             }
