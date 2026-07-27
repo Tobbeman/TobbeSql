@@ -385,4 +385,4 @@ your implementation progress.
 | 7      | SQL Parser           | Done        |
 | 8      | Query Executor       | Done        |
 | 9      | CLI                  | Done        |
-| 10     | B-Tree Index         | Not started |
+| 10     | B-Tree Index         | Done        |

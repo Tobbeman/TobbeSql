@@ -164,31 +164,49 @@ public class BTree
                 return;
             }
 
-            var newInternalPageNum = _pageManager.AllocatePage();
-            var newInternalData = _pageManager.ReadPage(newInternalPageNum);
-            BTreeNode.InitializeLeaf(newInternalData);
-            var newInternalNode = new BTreeNode(newInternalData);
-
-            parentNode.InsertInternalEntry(promoteKey, newChildPage);
-
-            var midIndex = parentNode.KeyCount / 2;
-            var midKey = parentNode.GetInternalKey(midIndex);
-
-            newInternalData[0] = 0;
-            newInternalNode.KeyCount = 0;
-
-            var rightFirstChild = parentNode.GetInternalChild(midIndex + 1);
-            BitConverter.GetBytes(rightFirstChild).CopyTo(newInternalData, 3);
-
-            for (var j = midIndex + 1; j < parentNode.KeyCount; j++)
+            // Internal node is full — split without overflowing the page buffer.
+            // Collect all existing keys + the new promote key into a sorted list,
+            // then distribute: left gets first half, middle key promotes up, right gets second half.
+            var allKeys = new List<(int Key, int RightChild)>();
+            for (var j = 0; j < parentNode.KeyCount; j++)
             {
-                newInternalNode.InsertInternalEntry(
-                    parentNode.GetInternalKey(j),
-                    parentNode.GetInternalChild(j + 1)
-                );
+                allKeys.Add((parentNode.GetInternalKey(j), parentNode.GetInternalChild(j + 1)));
             }
 
-            parentNode.KeyCount = midIndex;
+            // Insert the new key in sorted order
+            var insertPos = 0;
+            while (insertPos < allKeys.Count && allKeys[insertPos].Key < promoteKey)
+            {
+                insertPos++;
+            }
+            allKeys.Insert(insertPos, (promoteKey, newChildPage));
+
+            // Split: left gets [0..midIndex-1], middle promotes, right gets [midIndex+1..end]
+            var midIndex = allKeys.Count / 2;
+            var midKey = allKeys[midIndex].Key;
+
+            // Rebuild left node (reuse parentNode's page)
+            var leftFirstChild = parentNode.GetInternalChild(0);
+            parentNode.KeyCount = 0;
+            BitConverter.GetBytes(leftFirstChild).CopyTo(parentNode.GetPageData(), 3);
+            for (var j = 0; j < midIndex; j++)
+            {
+                parentNode.InsertInternalEntry(allKeys[j].Key, allKeys[j].RightChild);
+            }
+
+            // Build right node
+            var newInternalPageNum = _pageManager.AllocatePage();
+            var newInternalData = _pageManager.ReadPage(newInternalPageNum);
+            newInternalData[0] = 0; // IsLeaf = false
+            BitConverter.GetBytes((ushort)0).CopyTo(newInternalData, 1); // KeyCount = 0
+            var newInternalNode = new BTreeNode(newInternalData);
+
+            // Right node's first child is the right child of the middle key
+            BitConverter.GetBytes(allKeys[midIndex].RightChild).CopyTo(newInternalData, 3);
+            for (var j = midIndex + 1; j < allKeys.Count; j++)
+            {
+                newInternalNode.InsertInternalEntry(allKeys[j].Key, allKeys[j].RightChild);
+            }
 
             _pageManager.WritePage(parentPageNum, parentNode.GetPageData());
             _pageManager.WritePage(newInternalPageNum, newInternalNode.GetPageData());

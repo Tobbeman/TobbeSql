@@ -82,6 +82,14 @@ public class QueryExecutor
         using var pageManager = new PageManager(dataFilePath);
         var heapFile = new HeapFile(pageManager);
 
+        var indexedColumns = schema
+            .Columns.Select(
+                (c, i) => (Index: i, DataFile: _catalog.GetIndex(schema.TableName, c.Name))
+            )
+            .Where(x => x.DataFile is not null)
+            .Select(x => (x.Index, PageManager: new PageManager(x.DataFile!)))
+            .ToList();
+
         foreach (var valueList in stmt.Values)
         {
             var values = new object[schema.Columns.Count];
@@ -97,7 +105,18 @@ public class QueryExecutor
                 values[i] = valueList[stmtIndex];
             }
             var serialized = new RowSerializer().Serialize(schema, values);
-            heapFile.Insert(serialized);
+            var rowId = heapFile.Insert(serialized);
+
+            foreach (var (colIdx, indexPm) in indexedColumns)
+            {
+                var tree = new BTree(indexPm);
+                tree.Insert((int)values[colIdx], rowId);
+            }
+        }
+
+        foreach (var indexedColumn in indexedColumns)
+        {
+            indexedColumn.PageManager.Dispose();
         }
 
         return new QueryResult { AffectedRows = stmt.Values.Count };
@@ -133,10 +152,40 @@ public class QueryExecutor
 
         var selectAll = stmt.Columns[0] == "*";
 
+        var indexedColumns = schema
+            .Columns.Where(c => stmt.WhereClause is not null)
+            .Select(c =>
+                (
+                    c.Name,
+                    DataFile: _catalog.GetIndex(schema.TableName, c.Name),
+                    Value: ExpressionEvaluator.IndexComparison(stmt.WhereClause!, c.Name)
+                )
+            )
+            .Where(x => x.DataFile is not null)
+            .Where(x => x.Value is not null)
+            .Where(x => selectAll || stmt.Columns.Any(c => c == x.Name))
+            .Select(x => (x.Name, new PageManager(x.DataFile!), (int)x.Value!))
+            .ToList();
+
         var result = new QueryResult
         {
             Columns = selectAll ? [.. schema.Columns.Select(c => c.Name)] : stmt.Columns,
         };
+
+        if (indexedColumns.Count != 0)
+        {
+            var (name, indexPM, key) = indexedColumns.First();
+            var tree = new BTree(indexPM);
+            foreach (var rowId in tree.Search(key))
+            {
+                var data = heapFile.GetRow(rowId);
+                var values = serializer.Deserialize(schema, data!);
+                result.Rows.Add(values);
+            }
+
+            return result;
+        }
+
         foreach (var (rowId, data) in heapFile.Scan())
         {
             var values = serializer.Deserialize(schema, data);
@@ -183,25 +232,45 @@ public class QueryExecutor
     private QueryResult ExecuteDelete(DeleteStatement stmt)
     {
         var (schema, dataFilePath) = _catalog.GetTable(stmt.TableName);
+        var indexedColumns = schema
+            .Columns.Select(
+                (c, i) => (Index: i, DataFile: _catalog.GetIndex(schema.TableName, c.Name))
+            )
+            .Where(x => x.DataFile is not null)
+            .Select(x => (x.Index, PageManager: new PageManager(x.DataFile!)))
+            .ToList();
         using var pageManager = new PageManager(dataFilePath);
         var heapFile = new HeapFile(pageManager);
         var serializer = new RowSerializer();
         var result = new QueryResult();
         foreach (var (rowId, data) in heapFile.Scan())
         {
+            object[]? values = null;
+            object[] GetValues() => values ??= serializer.Deserialize(schema, data);
+
             if (
-                stmt.WhereClause is null
-                || ExpressionEvaluator.Evaluate(
-                    stmt.WhereClause,
-                    schema,
-                    serializer.Deserialize(schema, data)
-                )
+                stmt.WhereClause is not null
+                && !ExpressionEvaluator.Evaluate(stmt.WhereClause, schema, GetValues())
             )
             {
-                result.AffectedRows++;
-                heapFile.Delete(rowId);
+                continue;
+            }
+
+            result.AffectedRows++;
+            heapFile.Delete(rowId);
+
+            foreach (var indexedColumn in indexedColumns)
+            {
+                var tree = new BTree(indexedColumn.PageManager);
+                tree.Delete((int)GetValues()[indexedColumn.Index], rowId);
             }
         }
+
+        foreach (var indexedColumn in indexedColumns)
+        {
+            indexedColumn.PageManager.Dispose();
+        }
+
         return result;
     }
 

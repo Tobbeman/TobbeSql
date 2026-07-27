@@ -125,4 +125,31 @@ public class BTreeTests : IDisposable
             Assert.Equal(i, results[0].PageNumber);
         }
     }
+
+    [Fact(Skip = "Takes a while, only run manually")]
+    public void InsertOneMillion_StillFindsAllKeys()
+    {
+        var tree = BTree.Create(_pageManager);
+        var count = 1000000;
+
+        for (var i = 0; i < count; i++)
+        {
+            tree.Insert(i, new RowId(i / 100, i % 100));
+        }
+
+        // Spot-check a sampling of keys
+        for (var i = 0; i < count; i += 1000)
+        {
+            var results = tree.Search(i);
+            Assert.Single(results);
+            Assert.Equal(i / 100, results[0].PageNumber);
+            Assert.Equal(i % 100, results[0].SlotNumber);
+        }
+
+        // Check first and last
+        var first = tree.Search(0);
+        Assert.Single(first);
+        var last = tree.Search(count - 1);
+        Assert.Single(last);
+    }
 }
