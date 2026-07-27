@@ -141,7 +141,9 @@ public class TokenizerTests
     [Fact]
     public void Tokenize_WhereWithAndOr_ProducesCorrectTokens()
     {
-        var tokens = _tokenizer.Tokenize("SELECT * FROM users WHERE id = 1 AND name = 'Bob' OR id = 2");
+        var tokens = _tokenizer.Tokenize(
+            "SELECT * FROM users WHERE id = 1 AND name = 'Bob' OR id = 2"
+        );
 
         Assert.Equal(TokenType.Select, tokens[0].Type);
         Assert.Equal(TokenType.Star, tokens[1].Type);

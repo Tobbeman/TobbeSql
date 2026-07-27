@@ -53,8 +53,10 @@ public static class ExpressionEvaluator
 
     public static object? IndexComparison(Expression expression, string columnName)
     {
-        if (expression is ComparisonExpression { Operator: TokenType.Equals } comp
-            && comp.ColumnName == columnName)
+        if (
+            expression is ComparisonExpression { Operator: TokenType.Equals } comp
+            && comp.ColumnName == columnName
+        )
         {
             return comp.Value;
         }
