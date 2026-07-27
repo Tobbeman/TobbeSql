@@ -112,4 +112,32 @@ public class QueryExecutorTests : IDisposable
         Assert.Single(result.Rows[0]);
         Assert.Equal("Alice", result.Rows[0][0]);
     }
+
+    [Fact]
+    public void Count_ReturnsTotal()
+    {
+        Run("CREATE TABLE users (id INT, name VARCHAR)");
+        Run("INSERT INTO users (id, name) VALUES (1, 'Alice')");
+        Run("INSERT INTO users (id, name) VALUES (2, 'Bob')");
+        var result = Run("SELECT COUNT(*) FROM users");
+
+        Assert.Single(result.Columns);
+        Assert.Single(result.Rows);
+        Assert.Single(result.Rows[0]);
+        Assert.Equal(2, result.Rows[0][0]);
+    }
+
+    [Fact]
+    public void CountWhere_ReturnsFiltered()
+    {
+        Run("CREATE TABLE users (id INT, name VARCHAR)");
+        Run("INSERT INTO users (id, name) VALUES (1, 'Alice')");
+        Run("INSERT INTO users (id, name) VALUES (2, 'Bob')");
+        var result = Run("SELECT COUNT(*) FROM users WHERE id = 1");
+
+        Assert.Single(result.Columns);
+        Assert.Single(result.Rows);
+        Assert.Single(result.Rows[0]);
+        Assert.Equal(1, result.Rows[0][0]);
+    }
 }

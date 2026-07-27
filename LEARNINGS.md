@@ -19,5 +19,4 @@ If I keep working on this project, here is some stuff we might want to do:
 - Implement index support for strings
 - Implement index support for several keys
 - Implement primary key support
-- Implement count() operation
 - Implement min/max operation

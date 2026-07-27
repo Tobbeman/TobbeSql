@@ -106,12 +106,25 @@ public class SqlParser
         return new InsertStatement(tableName, columns, values);
     }
 
-    private SelectStatement ParseSelect()
+    private Statement ParseSelect()
     {
         Expect(TokenType.Select);
 
         var columns = new List<string>();
-        Expression? expression = null;
+
+        if (Current().Type == TokenType.Count)
+        {
+            Advance();
+            Expect(TokenType.LeftParen);
+            Expect(TokenType.Star);
+            Expect(TokenType.RightParen);
+            Expect(TokenType.From);
+
+            return new CountStatement(
+                Expect(TokenType.Identifier).Value,
+                GetOptionalWhereExpression()
+            );
+        }
 
         if (Current().Type == TokenType.Star)
         {

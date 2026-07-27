@@ -10,6 +10,7 @@ public class QueryExecutor(Catalog catalog)
         return statement switch
         {
             CreateTableStatement stmt => ExecuteCreateTable(stmt),
+            CountStatement stmt => ExecuteCount(stmt),
             InsertStatement stmt => ExecuteInsert(stmt),
             SelectStatement stmt => ExecuteSelect(stmt),
             DeleteStatement stmt => ExecuteDelete(stmt),
@@ -22,6 +23,35 @@ public class QueryExecutor(Catalog catalog)
     {
         catalog.CreateTable(new Schema(stmt.TableName, stmt.Columns));
         return new QueryResult { Message = $"Table created: {stmt.TableName}" };
+    }
+
+    private QueryResult ExecuteCount(CountStatement stmt)
+    {
+        var (schema, dataFilePath) = catalog.GetTable(stmt.TableName);
+        var predicate = stmt.WhereClause is not null
+            ? ExpressionEvaluator.Compile(stmt.WhereClause, schema)
+            : null;
+        using var pageManager = new PageManager(dataFilePath);
+        var heapFile = new HeapFile(pageManager);
+
+        var serializer = new RowSerializer();
+        var counter = 0;
+        foreach (var (rowId, data) in heapFile.Scan())
+        {
+            if (predicate is null || predicate(serializer.Deserialize(schema, data)))
+            {
+                counter++;
+            }
+        }
+
+        return new QueryResult
+        {
+            Columns = ["count"],
+            Rows =
+            [
+                [counter],
+            ],
+        };
     }
 
     private QueryResult ExecuteInsert(InsertStatement stmt)

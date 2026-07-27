@@ -11,6 +11,7 @@ public enum TokenType
     Values,
     Delete,
     Create,
+    Count,
     Table,
     Index,
     On,
