@@ -91,7 +91,7 @@ public class QueryExecutor(Catalog catalog)
 
         if (stmt.WhereClause is not null)
         {
-            var indexMatch = schema
+            var (DataFile, Value) = schema
                 .Columns.Select(c =>
                     (
                         DataFile: catalog.GetIndex(schema.TableName, c.Name),
@@ -100,11 +100,11 @@ public class QueryExecutor(Catalog catalog)
                 )
                 .FirstOrDefault(x => x.DataFile is not null && x.Value is not null);
 
-            if (indexMatch.DataFile is not null)
+            if (DataFile is not null)
             {
-                using var indexPM = new PageManager(indexMatch.DataFile);
+                using var indexPM = new PageManager(DataFile);
                 var tree = new BTree(indexPM);
-                foreach (var rowId in tree.Search((int)indexMatch.Value!))
+                foreach (var rowId in tree.Search((int)Value!))
                 {
                     var data = heapFile.GetRow(rowId);
                     result.Rows.Add(Project(serializer.Deserialize(schema, data!)));
