@@ -5,7 +5,6 @@ namespace TobbeSQL.Execution;
 
 public class QueryExecutor(Catalog catalog)
 {
-
     public QueryResult Execute(Statement statement)
     {
         return statement switch
@@ -79,12 +78,16 @@ public class QueryExecutor(Catalog catalog)
         var heapFile = new HeapFile(pageManager);
         var serializer = new RowSerializer();
 
-        var selectAll = stmt.Columns[0] == "*";
+        var columns =
+            stmt.Columns[0] == "*" ? schema.Columns.Select(c => c.Name).ToList() : stmt.Columns;
 
-        var result = new QueryResult
-        {
-            Columns = selectAll ? [.. schema.Columns.Select(c => c.Name)] : stmt.Columns,
-        };
+        var columnIndices = columns
+            .Select(name => schema.Columns.FindIndex(c => c.Name == name))
+            .ToArray();
+
+        object[] Project(object[] values) => [.. columnIndices.Select(i => values[i])];
+
+        var result = new QueryResult { Columns = columns };
 
         if (stmt.WhereClause is not null)
         {
@@ -104,8 +107,7 @@ public class QueryExecutor(Catalog catalog)
                 foreach (var rowId in tree.Search((int)indexMatch.Value!))
                 {
                     var data = heapFile.GetRow(rowId);
-                    var values = serializer.Deserialize(schema, data!);
-                    result.Rows.Add(values);
+                    result.Rows.Add(Project(serializer.Deserialize(schema, data!)));
                 }
                 return result;
             }
@@ -122,17 +124,7 @@ public class QueryExecutor(Catalog catalog)
                 continue;
             }
 
-            if (!selectAll)
-            {
-                var filteredValues = new object[stmt.Columns.Count];
-                for (var i = 0; i < stmt.Columns.Count; i++)
-                {
-                    var columnIndex = schema.Columns.FindIndex(c => c.Name == stmt.Columns[i]);
-                    filteredValues[i] = values[columnIndex];
-                }
-                values = filteredValues;
-            }
-            result.Rows.Add(values);
+            result.Rows.Add(Project(values));
         }
         return result;
     }
