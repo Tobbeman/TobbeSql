@@ -11,7 +11,6 @@ public class Tokenizer
     {
         _input = sql;
         _pos = 0;
-        char? next;
         var tokens = new List<Token>();
         while (_pos < _input.Length)
         {
@@ -43,7 +42,8 @@ public class Tokenizer
                     _pos++;
                     break;
                 case '<':
-                    next = Peek();
+                {
+                    var next = Peek();
                     switch (next)
                     {
                         case '=':
@@ -60,8 +60,10 @@ public class Tokenizer
                     }
                     _pos++;
                     break;
+                }
                 case '>':
-                    next = Peek();
+                {
+                    var next = Peek();
                     switch (next)
                     {
                         case '=':
@@ -74,6 +76,7 @@ public class Tokenizer
                     }
                     _pos++;
                     break;
+                }
                 case '\'':
                     tokens.Add(ReadString());
                     break;
