@@ -133,12 +133,7 @@ public class SqlParser
         }
 
         var tableName = Expect(TokenType.Identifier).Value;
-        if (HasMore() && Current().Type == TokenType.Where)
-        {
-            Advance();
-            expression = ParseExpression();
-        }
-        return new SelectStatement(columns, tableName, expression);
+        return new SelectStatement(columns, tableName, GetOptionalWhereExpression());
     }
 
     private DeleteStatement ParseDelete()
@@ -146,13 +141,7 @@ public class SqlParser
         Expect(TokenType.Delete);
         Expect(TokenType.From);
         var tableName = Expect(TokenType.Identifier).Value;
-        Expression? expression = null;
-        if (HasMore())
-        {
-            Expect(TokenType.Where);
-            expression = ParseExpression();
-        }
-        return new DeleteStatement(tableName, expression);
+        return new DeleteStatement(tableName, GetOptionalWhereExpression());
     }
 
     private CreateIndexStatement ParseCreateIndex()
@@ -228,5 +217,15 @@ public class SqlParser
             TokenType.StringLiteral => token.Value,
             _ => throw new Exception($"Could not parse value token: {token.Type}"),
         };
+    }
+
+    private Expression? GetOptionalWhereExpression()
+    {
+        if (HasMore() && Current().Type == TokenType.Where)
+        {
+            Advance();
+            return ParseExpression();
+        }
+        return null;
     }
 }
