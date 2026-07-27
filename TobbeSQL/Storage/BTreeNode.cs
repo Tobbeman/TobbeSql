@@ -71,6 +71,20 @@ public class BTreeNode
         return new RowId(pageNumber, slotNumber);
     }
 
+    public bool ContainsKey(int key)
+    {
+        var count = KeyCount;
+        for (var i = 0; i < count; i++)
+        {
+            var k = GetLeafKey(i);
+            if (k == key)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void InsertLeafEntry(int key, RowId rowId)
     {
         var count = KeyCount;

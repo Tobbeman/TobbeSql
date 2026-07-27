@@ -152,4 +152,12 @@ public class BTreeTests : IDisposable
         var last = tree.Search(count - 1);
         Assert.Single(last);
     }
+
+    [Fact]
+    public void DuplicateKeys_CauseExceptionIfNotAllowed()
+    {
+        var tree = BTree.Create(_pageManager);
+        tree.Insert(42, new RowId(1, 0), false);
+        Assert.Throws<Exception>(() => tree.Insert(42, new RowId(2, 1), false));
+    }
 }
