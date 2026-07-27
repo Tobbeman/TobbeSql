@@ -3,14 +3,8 @@ using TobbeSQL.Storage;
 
 namespace TobbeSQL.Execution;
 
-public class QueryExecutor
+public class QueryExecutor(Catalog catalog)
 {
-    private readonly Catalog _catalog;
-
-    public QueryExecutor(Catalog catalog)
-    {
-        _catalog = catalog;
-    }
 
     public QueryResult Execute(Statement statement)
     {
@@ -27,20 +21,20 @@ public class QueryExecutor
 
     private QueryResult ExecuteCreateTable(CreateTableStatement stmt)
     {
-        _catalog.CreateTable(new Schema(stmt.TableName, stmt.Columns));
+        catalog.CreateTable(new Schema(stmt.TableName, stmt.Columns));
         return new QueryResult { Message = $"Table created: {stmt.TableName}" };
     }
 
     private QueryResult ExecuteInsert(InsertStatement stmt)
     {
-        var (schema, dataFilePath) = _catalog.GetTable(stmt.TableName);
+        var (schema, dataFilePath) = catalog.GetTable(stmt.TableName);
         using var pageManager = new PageManager(dataFilePath);
         var heapFile = new HeapFile(pageManager);
 
         var serializer = new RowSerializer();
         var indexedColumns = schema
             .Columns.Select(
-                (c, i) => (Index: i, DataFile: _catalog.GetIndex(schema.TableName, c.Name))
+                (c, i) => (Index: i, DataFile: catalog.GetIndex(schema.TableName, c.Name))
             )
             .Where(x => x.DataFile is not null)
             .Select(x => (x.Index, PageManager: new PageManager(x.DataFile!)))
@@ -80,7 +74,7 @@ public class QueryExecutor
 
     private QueryResult ExecuteSelect(SelectStatement stmt)
     {
-        var (schema, dataFilePath) = _catalog.GetTable(stmt.TableName);
+        var (schema, dataFilePath) = catalog.GetTable(stmt.TableName);
         using var pageManager = new PageManager(dataFilePath);
         var heapFile = new HeapFile(pageManager);
         var serializer = new RowSerializer();
@@ -97,7 +91,7 @@ public class QueryExecutor
             var indexMatch = schema
                 .Columns.Select(c =>
                     (
-                        DataFile: _catalog.GetIndex(schema.TableName, c.Name),
+                        DataFile: catalog.GetIndex(schema.TableName, c.Name),
                         Value: ExpressionEvaluator.IndexComparison(stmt.WhereClause, c.Name)
                     )
                 )
@@ -145,10 +139,10 @@ public class QueryExecutor
 
     private QueryResult ExecuteDelete(DeleteStatement stmt)
     {
-        var (schema, dataFilePath) = _catalog.GetTable(stmt.TableName);
+        var (schema, dataFilePath) = catalog.GetTable(stmt.TableName);
         var indexedColumns = schema
             .Columns.Select(
-                (c, i) => (Index: i, DataFile: _catalog.GetIndex(schema.TableName, c.Name))
+                (c, i) => (Index: i, DataFile: catalog.GetIndex(schema.TableName, c.Name))
             )
             .Where(x => x.DataFile is not null)
             .Select(x => (x.Index, PageManager: new PageManager(x.DataFile!)))
@@ -190,7 +184,7 @@ public class QueryExecutor
 
     private QueryResult ExecuteCreateIndex(CreateIndexStatement stmt)
     {
-        var (schema, tableDataFilePath) = _catalog.GetTable(stmt.TableName);
+        var (schema, tableDataFilePath) = catalog.GetTable(stmt.TableName);
         var columnIndex = schema.Columns.FindIndex(c => c.Name == stmt.ColumnName);
         if (columnIndex == -1)
         {
@@ -201,7 +195,7 @@ public class QueryExecutor
             throw new Exception("Only support indexes on integer type columns");
         }
 
-        var indexDataFilePath = _catalog.CreateIndex(
+        var indexDataFilePath = catalog.CreateIndex(
             stmt.IndexName,
             stmt.TableName,
             stmt.ColumnName
