@@ -34,7 +34,7 @@ public class RowSerializer
         using var writer = new BinaryWriter(stream);
 
         writer.Write(new byte[2]);
-        var lenght = 0;
+        var length = 0;
         for (var i = 0; i < schema.Columns.Count; i++)
         {
             var column = schema.Columns[i];
@@ -43,13 +43,13 @@ public class RowSerializer
             {
                 case ColumnType.Integer:
                     writer.Write(BitConverter.GetBytes((int)value));
-                    lenght += 4;
+                    length += 4;
                     break;
                 case ColumnType.Varchar:
                     var valueBytes = Encoding.UTF8.GetBytes((string)value);
                     writer.Write(BitConverter.GetBytes((short)valueBytes.Length));
                     writer.Write(valueBytes);
-                    lenght += 2 + valueBytes.Length;
+                    length += 2 + valueBytes.Length;
                     break;
                 default:
                     throw new Exception($"Serializer do not support type: {column.Type}");
@@ -57,7 +57,7 @@ public class RowSerializer
         }
 
         writer.Seek(0, SeekOrigin.Begin);
-        writer.Write((short)lenght);
+        writer.Write((short)length);
         return stream.ToArray();
     }
 
