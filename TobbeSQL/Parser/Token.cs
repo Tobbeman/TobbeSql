@@ -1,8 +1,5 @@
 namespace TobbeSQL.Parser;
 
-/// <summary>
-/// Represents a single token from the SQL input.
-/// </summary>
 public class Token
 {
     public TokenType Type { get; }

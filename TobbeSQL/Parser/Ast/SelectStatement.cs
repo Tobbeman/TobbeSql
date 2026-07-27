@@ -1,9 +1,5 @@
 namespace TobbeSQL.Parser.Ast;
 
-/// <summary>
-/// Represents: SELECT columns FROM tableName [WHERE expression]
-/// If Columns contains "*", it means select all columns.
-/// </summary>
 public class SelectStatement : Statement
 {
     public List<string> Columns { get; }

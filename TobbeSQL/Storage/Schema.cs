@@ -1,8 +1,5 @@
 namespace TobbeSQL.Storage;
 
-/// <summary>
-/// Describes a table: its name and the ordered list of columns.
-/// </summary>
 public class Schema
 {
     public string TableName { get; }

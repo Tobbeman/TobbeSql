@@ -1,8 +1,5 @@
 namespace TobbeSQL.Parser.Ast;
 
-/// <summary>
-/// Represents: INSERT INTO tableName (col1, col2, ...) VALUES (val1, val2, ...)
-/// </summary>
 public class InsertStatement : Statement
 {
     public string TableName { get; }

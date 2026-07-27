@@ -1,8 +1,5 @@
 namespace TobbeSQL.Parser.Ast;
 
-/// <summary>
-/// Represents: CREATE INDEX indexName ON tableName (columnName)
-/// </summary>
 public class CreateIndexStatement : Statement
 {
     public string IndexName { get; }

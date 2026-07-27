@@ -1,9 +1,5 @@
 namespace TobbeSQL.Storage;
 
-/// <summary>
-/// Manages reading and writing fixed-size pages to a single file on disk.
-/// Each page is PageSize bytes. Page N lives at byte offset N * PageSize in the file.
-/// </summary>
 public class PageManager : IDisposable
 {
     public const int PageSize = 4096;
@@ -14,20 +10,8 @@ public class PageManager : IDisposable
         _fileStream = File.Open(filePath, FileMode.OpenOrCreate, FileAccess.ReadWrite);
     }
 
-    /// <summary>
-    /// Returns how many pages the file currently holds.
-    /// Calculate from the file's length divided by PageSize.
-    /// </summary>
-    public int PageCount
-    {
-        get { return (int)(_fileStream.Length / PageSize); }
-    }
+    public int PageCount => (int)(_fileStream.Length / PageSize);
 
-    /// <summary>
-    /// Reads page number <paramref name="pageNumber"/> from the file.
-    /// Seek to pageNumber * PageSize, then read PageSize bytes into a new byte array.
-    /// Returns the byte array (always exactly PageSize bytes).
-    /// </summary>
     public byte[] ReadPage(int pageNumber)
     {
         var bytes = new byte[PageSize];
@@ -42,11 +26,6 @@ public class PageManager : IDisposable
         return bytes;
     }
 
-    /// <summary>
-    /// Writes <paramref name="data"/> to page number <paramref name="pageNumber"/>.
-    /// Seek to pageNumber * PageSize, then write exactly PageSize bytes.
-    /// The data array must be exactly PageSize bytes long.
-    /// </summary>
     public void WritePage(int pageNumber, byte[] data)
     {
         _fileStream.Seek(pageNumber * PageSize, SeekOrigin.Begin);
@@ -54,12 +33,6 @@ public class PageManager : IDisposable
         _fileStream.Flush();
     }
 
-    /// <summary>
-    /// Grows the file by one page and returns the new page's number.
-    /// The new page number is the current PageCount (before growing).
-    /// Write PageSize zero-bytes at the end of the file to extend it.
-    /// Flush the stream so the file length is updated immediately.
-    /// </summary>
     public int AllocatePage()
     {
         var currentPage = PageCount;
@@ -69,9 +42,6 @@ public class PageManager : IDisposable
         return currentPage;
     }
 
-    /// <summary>
-    /// Closes the underlying file stream.
-    /// </summary>
     public void Dispose()
     {
         _fileStream.Dispose();

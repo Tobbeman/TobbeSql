@@ -1,8 +1,5 @@
 namespace TobbeSQL.Parser.Ast;
 
-/// <summary>
-/// Represents: DELETE FROM tableName [WHERE expression]
-/// </summary>
 public class DeleteStatement : Statement
 {
     public string TableName { get; }

@@ -28,10 +28,6 @@ public class QueryExecutorTests : IDisposable
             Directory.Delete(_testDir, recursive: true);
     }
 
-    /// <summary>
-    /// Helper: parses a SQL string and executes it, returning the result.
-    /// Use this in your tests to avoid repeating tokenize+parse+execute boilerplate.
-    /// </summary>
     private QueryResult Run(string sql)
     {
         var tokens = _tokenizer.Tokenize(sql);
