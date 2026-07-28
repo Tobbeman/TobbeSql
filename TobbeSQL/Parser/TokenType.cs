@@ -13,6 +13,7 @@ public enum TokenType
     Create,
     Count,
     Table,
+    Unique,
     Index,
     On,
     And,

@@ -46,7 +46,7 @@ public class BTree
         return rows;
     }
 
-    public void Insert(int key, RowId rowId, bool allowDuplicates = true)
+    public void Insert(int key, RowId rowId, bool unique = false)
     {
         var pageNumber = 0;
         var path = new List<(int PageNumber, BTreeNode Node)>();
@@ -64,7 +64,7 @@ public class BTree
             pageNumber = node.FindChild(key);
         }
 
-        if (!allowDuplicates && node.ContainsKey(key))
+        if (unique && node.ContainsKey(key))
         {
             throw new Exception($"Duplicate key: {key}");
         }

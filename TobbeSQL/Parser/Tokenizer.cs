@@ -148,6 +148,7 @@ public class Tokenizer
             "create" => TokenType.Create,
             "count" => TokenType.Count,
             "table" => TokenType.Table,
+            "unique" => TokenType.Unique,
             "index" => TokenType.Index,
             "on" => TokenType.On,
             "and" => TokenType.And,

@@ -63,10 +63,16 @@ public class QueryExecutor(Catalog catalog)
         var serializer = new RowSerializer();
         var indexedColumns = schema
             .Columns.Select(
-                (c, i) => (Index: i, DataFile: catalog.GetIndex(schema.TableName, c.Name))
+                (c, i) => (Index: i, IndexMetadata: catalog.GetIndex(schema.TableName, c.Name))
             )
-            .Where(x => x.DataFile is not null)
-            .Select(x => (x.Index, PageManager: new PageManager(x.DataFile!)))
+            .Where(x => x.IndexMetadata is not null)
+            .Select(x =>
+                (
+                    x.Index,
+                    PageManager: new PageManager(x.IndexMetadata!.Value.DataFilePath),
+                    x.IndexMetadata.Value.Unique
+                )
+            )
             .ToList();
 
         foreach (var valueList in stmt.Values)
@@ -86,10 +92,10 @@ public class QueryExecutor(Catalog catalog)
             var serialized = serializer.Serialize(schema, values);
             var rowId = heapFile.Insert(serialized);
 
-            foreach (var (colIdx, indexPm) in indexedColumns)
+            foreach (var (colIdx, indexPm, unique) in indexedColumns)
             {
                 var tree = new BTree(indexPm);
-                tree.Insert((int)values[colIdx], rowId);
+                tree.Insert((int)values[colIdx], rowId, unique);
             }
         }
 
@@ -125,18 +131,18 @@ public class QueryExecutor(Catalog catalog)
 
         if (stmt.WhereClause is not null)
         {
-            var (DataFile, Value) = schema
+            var (MetaData, Value) = schema
                 .Columns.Select(c =>
                     (
-                        DataFile: catalog.GetIndex(schema.TableName, c.Name),
+                        MetaData: catalog.GetIndex(schema.TableName, c.Name),
                         Value: ExpressionEvaluator.IndexComparison(stmt.WhereClause, c.Name)
                     )
                 )
-                .FirstOrDefault(x => x.DataFile is not null && x.Value is not null);
+                .FirstOrDefault(x => x.MetaData is not null && x.Value is not null);
 
-            if (DataFile is not null)
+            if (MetaData is not null)
             {
-                using var indexPM = new PageManager(DataFile);
+                using var indexPM = new PageManager(MetaData.Value.DataFilePath);
                 var tree = new BTree(indexPM);
                 foreach (var rowId in tree.Search((int)Value!))
                 {
@@ -165,10 +171,12 @@ public class QueryExecutor(Catalog catalog)
         var (schema, dataFilePath) = catalog.GetTable(stmt.TableName);
         var indexedColumns = schema
             .Columns.Select(
-                (c, i) => (Index: i, DataFile: catalog.GetIndex(schema.TableName, c.Name))
+                (c, i) => (Index: i, IndexMetadata: catalog.GetIndex(schema.TableName, c.Name))
             )
-            .Where(x => x.DataFile is not null)
-            .Select(x => (x.Index, PageManager: new PageManager(x.DataFile!)))
+            .Where(x => x.IndexMetadata is not null)
+            .Select(x =>
+                (x.Index, PageManager: new PageManager(x.IndexMetadata!.Value.DataFilePath))
+            )
             .ToList();
         var predicate = stmt.WhereClause is not null
             ? ExpressionEvaluator.Compile(stmt.WhereClause, schema)
@@ -221,8 +229,10 @@ public class QueryExecutor(Catalog catalog)
         var indexDataFilePath = catalog.CreateIndex(
             stmt.IndexName,
             stmt.TableName,
-            stmt.ColumnName
+            stmt.ColumnName,
+            stmt.Unique
         );
+
         using var indexPageManager = new PageManager(indexDataFilePath);
         var tree = BTree.Create(indexPageManager);
 
@@ -233,7 +243,7 @@ public class QueryExecutor(Catalog catalog)
         foreach (var (rowId, data) in heapFile.Scan())
         {
             var row = serializer.Deserialize(schema, data);
-            tree.Insert((int)row[columnIndex], rowId);
+            tree.Insert((int)row[columnIndex], rowId, stmt.Unique);
         }
 
         return new QueryResult { Message = $"Index created: {stmt.IndexName}" };

@@ -140,4 +140,13 @@ public class QueryExecutorTests : IDisposable
         Assert.Single(result.Rows[0]);
         Assert.Equal(1, result.Rows[0][0]);
     }
+
+    [Fact]
+    public void Index_CreateUnique()
+    {
+        Run("CREATE TABLE users (id INT, name VARCHAR)");
+        Run("CREATE UNIQUE INDEX idx_user_id ON users (id)");
+        Run("INSERT INTO users (id, name) VALUES (1, 'Alice')");
+        Assert.Throws<Exception>(() => Run("INSERT INTO users (id, name) VALUES (1, 'Alice')"));
+    }
 }

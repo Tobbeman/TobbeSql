@@ -12,7 +12,8 @@ public class Catalog
         string IndexName,
         string TableName,
         string ColumnName,
-        string DataFilePath
+        string DataFilePath,
+        bool Unique
     )> _indexes = new();
 
     public Catalog(string directoryPath)
@@ -33,7 +34,7 @@ public class Catalog
         Load();
     }
 
-    public string CreateIndex(string indexName, string tableName, string columnName)
+    public string CreateIndex(string indexName, string tableName, string columnName, bool unique)
     {
         if (_indexes.Any(i => i.IndexName == indexName))
         {
@@ -41,17 +42,23 @@ public class Catalog
         }
         var dataFile = Path.Combine(_directoryPath, $"idx_{indexName}.db");
         File.Create(dataFile).Dispose();
-        _indexes.Add(new(indexName, tableName, columnName, dataFile));
+        _indexes.Add(new(indexName, tableName, columnName, dataFile, unique));
         Save();
         return dataFile;
     }
 
-    public string? GetIndex(string tableName, string columnName)
+    public (string DataFilePath, bool Unique)? GetIndex(string tableName, string columnName)
     {
         var match = _indexes.FirstOrDefault(i =>
             i.TableName == tableName && i.ColumnName == columnName
         );
-        return match.IndexName is null ? null : match.DataFilePath;
+
+        if (match == default)
+        {
+            return null;
+        }
+
+        return (match.DataFilePath, match.Unique);
     }
 
     public void CreateTable(Schema schema)
@@ -107,6 +114,7 @@ public class Catalog
                             TableName = i.TableName,
                             ColumnName = i.ColumnName,
                             DataFilePath = i.DataFilePath,
+                            Unique = i.Unique,
                         }),
                     ],
                 }
@@ -133,7 +141,9 @@ public class Catalog
         );
         _indexes =
         [
-            .. catalog.Indexes.Select(i => (i.Name, i.TableName, i.ColumnName, i.DataFilePath)),
+            .. catalog.Indexes.Select(i =>
+                (i.Name, i.TableName, i.ColumnName, i.DataFilePath, i.Unique)
+            ),
         ];
     }
 
@@ -156,5 +166,6 @@ public class Catalog
         public required string TableName { get; set; }
         public required string ColumnName { get; set; }
         public required string DataFilePath { get; set; }
+        public required bool Unique { get; set; }
     }
 }

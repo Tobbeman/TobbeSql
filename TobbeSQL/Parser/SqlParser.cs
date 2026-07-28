@@ -28,7 +28,7 @@ public class SqlParser
         var next = Peek();
         return next?.Type switch
         {
-            TokenType.Index => ParseCreateIndex(),
+            TokenType.Index or TokenType.Unique => ParseCreateIndex(),
             TokenType.Table => ParseCreateTable(),
             _ => throw new Exception($"Cannot parse create since next is: {next?.Type}"),
         };
@@ -160,14 +160,18 @@ public class SqlParser
     private CreateIndexStatement ParseCreateIndex()
     {
         Expect(TokenType.Create);
-        Expect(TokenType.Index);
+        var unique = Expect(TokenType.Unique, TokenType.Index).Type == TokenType.Unique;
+        if (unique)
+        {
+            Expect(TokenType.Index);
+        }
         var indexName = Expect(TokenType.Identifier).Value;
         Expect(TokenType.On);
         var tableName = Expect(TokenType.Identifier).Value;
         Expect(TokenType.LeftParen);
         var columnName = Expect(TokenType.Identifier).Value;
         Expect(TokenType.RightParen);
-        return new CreateIndexStatement(indexName, tableName, columnName);
+        return new CreateIndexStatement(indexName, tableName, columnName, unique);
     }
 
     private Expression ParseExpression()

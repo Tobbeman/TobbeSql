@@ -158,6 +158,6 @@ public class BTreeTests : IDisposable
     {
         var tree = BTree.Create(_pageManager);
         tree.Insert(42, new RowId(1, 0), false);
-        Assert.Throws<Exception>(() => tree.Insert(42, new RowId(2, 1), false));
+        Assert.Throws<Exception>(() => tree.Insert(42, new RowId(2, 1), true));
     }
 }
