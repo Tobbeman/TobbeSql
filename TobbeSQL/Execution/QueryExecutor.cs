@@ -109,20 +109,34 @@ public class QueryExecutor(Catalog catalog)
 
     private IEnumerable<object[]> SortValues(InsertStatement stmt, Schema schema)
     {
+        var stmtIndexToColumnIndex = new Dictionary<int, int>();
+        var mappingExceptions = new List<Exception>();
+        for (var i = 0; i < stmt.Columns.Count; i++)
+        {
+            var stmtColumn = stmt.Columns[i];
+            var schemaIndex = schema.Columns.FindIndex(s => s.Name == stmtColumn);
+            if (schemaIndex == -1)
+            {
+                mappingExceptions.Add(
+                    new Exception($"Could not find column at insert: {stmtColumn}")
+                );
+            }
+            stmtIndexToColumnIndex[schemaIndex] = i;
+        }
+
+        if (mappingExceptions.Count != 0)
+        {
+            throw new AggregateException(mappingExceptions);
+        }
+
         foreach (var valueList in stmt.Values)
         {
             var values = new object[schema.Columns.Count];
-            for (var i = 0; i < schema.Columns.Count; i++)
+            for (var i = 0; i < valueList.Count; i++)
             {
-                var tableColumn = schema.Columns[i];
-                var stmtIndex = stmt.Columns.FindIndex(s => s == tableColumn.Name);
-                if (stmtIndex == -1)
-                {
-                    throw new Exception($"Could not find column at insert: {tableColumn.Name}");
-                }
-
-                values[i] = valueList[stmtIndex];
+                values[i] = valueList[stmtIndexToColumnIndex[i]];
             }
+
             yield return values;
         }
     }
