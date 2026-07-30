@@ -147,6 +147,18 @@ public class Catalog
         ];
     }
 
+    public void DropIndex(string indexName)
+    {
+        var index = _indexes.SingleOrDefault(i => i.IndexName == indexName);
+        if (index == default)
+        {
+            throw new Exception($"No such index to drop: {indexName}");
+        }
+
+        _indexes.Remove(index);
+        File.Delete(index.DataFilePath);
+    }
+
     record CatalogFile
     {
         public required List<CatalogEntry> Tables { get; set; } = [];

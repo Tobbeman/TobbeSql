@@ -150,6 +150,7 @@ public class Tokenizer
             "table" => TokenType.Table,
             "unique" => TokenType.Unique,
             "index" => TokenType.Index,
+            "drop" => TokenType.Drop,
             "on" => TokenType.On,
             "and" => TokenType.And,
             "or" => TokenType.Or,

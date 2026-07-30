@@ -19,6 +19,7 @@ public class SqlParser
             TokenType.Insert => ParseInsert(),
             TokenType.Delete => ParseDelete(),
             TokenType.Create => ParseCreate(),
+            TokenType.Drop => ParseDrop(),
             _ => throw new Exception($"Could not parse token: {_tokens[_pos].Type}"),
         };
     }
@@ -32,6 +33,24 @@ public class SqlParser
             TokenType.Table => ParseCreateTable(),
             _ => throw new Exception($"Cannot parse create since next is: {next?.Type}"),
         };
+    }
+
+    private Statement ParseDrop()
+    {
+        var next = Peek();
+        return next?.Type switch
+        {
+            TokenType.Index => ParseDropIndex(),
+            _ => throw new Exception($"Cannot parse create since next is: {next?.Type}"),
+        };
+    }
+
+    private DropIndexStatement ParseDropIndex()
+    {
+        Expect(TokenType.Drop);
+        Expect(TokenType.Index);
+        var indexName = Expect(TokenType.Identifier).Value;
+        return new DropIndexStatement(indexName);
     }
 
     private CreateTableStatement ParseCreateTable()

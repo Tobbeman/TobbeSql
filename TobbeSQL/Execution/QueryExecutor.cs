@@ -15,6 +15,7 @@ public class QueryExecutor(Catalog catalog)
             SelectStatement stmt => ExecuteSelect(stmt),
             DeleteStatement stmt => ExecuteDelete(stmt),
             CreateIndexStatement stmt => ExecuteCreateIndex(stmt),
+            DropIndexStatement stmt => ExecuteDropIndex(stmt),
             _ => throw new Exception($"Unknown statement type: {statement.GetType()}"),
         };
     }
@@ -247,5 +248,11 @@ public class QueryExecutor(Catalog catalog)
         }
 
         return new QueryResult { Message = $"Index created: {stmt.IndexName}" };
+    }
+
+    public QueryResult ExecuteDropIndex(DropIndexStatement stmt)
+    {
+        catalog.DropIndex(stmt.IndexName);
+        return new QueryResult { Message = $"Index dropped: {stmt.IndexName}" };
     }
 }

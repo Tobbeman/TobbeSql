@@ -15,6 +15,7 @@ public enum TokenType
     Table,
     Unique,
     Index,
+    Drop,
     On,
     And,
     Or,

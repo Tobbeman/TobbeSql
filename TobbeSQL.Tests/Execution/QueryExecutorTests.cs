@@ -149,4 +149,12 @@ public class QueryExecutorTests : IDisposable
         Run("INSERT INTO users (id, name) VALUES (1, 'Alice')");
         Assert.Throws<Exception>(() => Run("INSERT INTO users (id, name) VALUES (1, 'Alice')"));
     }
+
+    [Fact]
+    public void Index_Drop()
+    {
+        Run("CREATE TABLE users (id INT, name VARCHAR)");
+        Run("CREATE INDEX idx_user_id ON users (id)");
+        Run("DROP INDEX idx_user_id");
+    }
 }
