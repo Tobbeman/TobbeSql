@@ -10,6 +10,7 @@ public class QueryExecutor(Catalog catalog)
         return statement switch
         {
             CreateTableStatement stmt => ExecuteCreateTable(stmt),
+            DropTableStatement stmt => ExecuteDropTable(stmt),
             CountStatement stmt => ExecuteCount(stmt),
             InsertStatement stmt => ExecuteInsert(stmt),
             SelectStatement stmt => ExecuteSelect(stmt),
@@ -24,6 +25,12 @@ public class QueryExecutor(Catalog catalog)
     {
         catalog.CreateTable(new Schema(stmt.TableName, stmt.Columns));
         return new QueryResult { Message = $"Table created: {stmt.TableName}" };
+    }
+
+    private QueryResult ExecuteDropTable(DropTableStatement stmt)
+    {
+        catalog.DropTable(stmt.TableName);
+        return new QueryResult { Message = $"Table dropped: {stmt.TableName}" };
     }
 
     private QueryResult ExecuteCount(CountStatement stmt)
@@ -241,10 +248,18 @@ public class QueryExecutor(Catalog catalog)
         var heapFile = new HeapFile(tablePageManager);
         var serializer = new RowSerializer();
 
-        foreach (var (rowId, data) in heapFile.Scan())
+        try
         {
-            var row = serializer.Deserialize(schema, data);
-            tree.Insert((int)row[columnIndex], rowId, stmt.Unique);
+            foreach (var (rowId, data) in heapFile.Scan())
+            {
+                var row = serializer.Deserialize(schema, data);
+                tree.Insert((int)row[columnIndex], rowId, stmt.Unique);
+            }
+        }
+        catch
+        {
+            indexPageManager.Dispose();
+            catalog.DropIndex(stmt.IndexName);
         }
 
         return new QueryResult { Message = $"Index created: {stmt.IndexName}" };

@@ -41,6 +41,7 @@ public class SqlParser
         return next?.Type switch
         {
             TokenType.Index => ParseDropIndex(),
+            TokenType.Table => ParseDropTable(),
             _ => throw new Exception($"Cannot parse create since next is: {next?.Type}"),
         };
     }
@@ -51,6 +52,14 @@ public class SqlParser
         Expect(TokenType.Index);
         var indexName = Expect(TokenType.Identifier).Value;
         return new DropIndexStatement(indexName);
+    }
+
+    private DropTableStatement ParseDropTable()
+    {
+        Expect(TokenType.Drop);
+        Expect(TokenType.Table);
+        var tableName = Expect(TokenType.Identifier).Value;
+        return new DropTableStatement(tableName);
     }
 
     private CreateTableStatement ParseCreateTable()

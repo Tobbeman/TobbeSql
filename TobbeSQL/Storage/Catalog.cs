@@ -157,6 +157,7 @@ public class Catalog
 
         _indexes.Remove(index);
         File.Delete(index.DataFilePath);
+        Save();
     }
 
     record CatalogFile

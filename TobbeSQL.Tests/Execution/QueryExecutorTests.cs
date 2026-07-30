@@ -157,4 +157,11 @@ public class QueryExecutorTests : IDisposable
         Run("CREATE INDEX idx_user_id ON users (id)");
         Run("DROP INDEX idx_user_id");
     }
+
+    [Fact]
+    public void Table_Drop()
+    {
+        Run("CREATE TABLE users (id INT, name VARCHAR)");
+        Run("DROP TABLE users");
+    }
 }
