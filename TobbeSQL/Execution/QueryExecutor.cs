@@ -68,7 +68,6 @@ public class QueryExecutor(Catalog catalog)
         using var pageManager = new PageManager(dataFilePath);
         var heapFile = new HeapFile(pageManager);
 
-        var serializer = new RowSerializer();
         var indexedColumns = schema
             .Columns.Select(
                 (c, i) => (Index: i, IndexMetadata: catalog.GetIndex(schema.TableName, c.Name))
@@ -83,6 +82,33 @@ public class QueryExecutor(Catalog catalog)
             )
             .ToList();
 
+        var sortedValues = SortValues(stmt, schema).ToList();
+        var serializer = new RowSerializer();
+        var rowIds = heapFile
+            .InsertBatch(sortedValues.Select(s => serializer.Serialize(schema, s)))
+            .ToList();
+
+        foreach (var (colIdx, indexPm, unique) in indexedColumns)
+        {
+            for (var i = 0; i < sortedValues.Count; i++)
+            {
+                var values = sortedValues[i];
+                var rowId = rowIds[i];
+                var tree = new BTree(indexPm);
+                tree.Insert((int)values[colIdx], rowId, unique);
+            }
+        }
+
+        foreach (var indexedColumn in indexedColumns)
+        {
+            indexedColumn.PageManager.Dispose();
+        }
+
+        return new QueryResult { AffectedRows = stmt.Values.Count };
+    }
+
+    private IEnumerable<object[]> SortValues(InsertStatement stmt, Schema schema)
+    {
         foreach (var valueList in stmt.Values)
         {
             var values = new object[schema.Columns.Count];
@@ -97,22 +123,8 @@ public class QueryExecutor(Catalog catalog)
 
                 values[i] = valueList[stmtIndex];
             }
-            var serialized = serializer.Serialize(schema, values);
-            var rowId = heapFile.Insert(serialized);
-
-            foreach (var (colIdx, indexPm, unique) in indexedColumns)
-            {
-                var tree = new BTree(indexPm);
-                tree.Insert((int)values[colIdx], rowId, unique);
-            }
+            yield return values;
         }
-
-        foreach (var indexedColumn in indexedColumns)
-        {
-            indexedColumn.PageManager.Dispose();
-        }
-
-        return new QueryResult { AffectedRows = stmt.Values.Count };
     }
 
     private QueryResult ExecuteSelect(SelectStatement stmt)

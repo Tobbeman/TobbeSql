@@ -11,27 +11,47 @@ public class HeapFile
 
     public RowId Insert(byte[] rowData)
     {
-        int pageNumber;
-        SlottedPage page;
-        int slotNumber;
-        for (pageNumber = 0; pageNumber < _pageManager.PageCount; pageNumber++)
+        return InsertBatch(new List<byte[]>() { rowData }).Single();
+    }
+
+    public IEnumerable<RowId> InsertBatch(IEnumerable<byte[]> rowData)
+    {
+        int pageNumber = 0;
+        var rowDataEnumerator = rowData.GetEnumerator();
+        if (!rowDataEnumerator.MoveNext())
         {
-            page = new SlottedPage(_pageManager.ReadPage(pageNumber));
-            slotNumber = page.InsertRow(rowData);
-            if (slotNumber != -1)
-            {
-                _pageManager.WritePage(pageNumber, page.GetPageData());
-                return new RowId(pageNumber, slotNumber);
-            }
+            throw new Exception("Cannot batch insert, no items");
         }
 
-        pageNumber = _pageManager.AllocatePage();
-        var rawPage = _pageManager.ReadPage(pageNumber);
-        SlottedPage.Initialize(rawPage);
-        page = new SlottedPage(rawPage);
-        slotNumber = page.InsertRow(rowData);
-        _pageManager.WritePage(pageNumber, page.GetPageData());
-        return new RowId(pageNumber, slotNumber);
+        do
+        {
+            SlottedPage page;
+            int slotNumber;
+            var createNew = true;
+            for (; pageNumber < _pageManager.PageCount; pageNumber++)
+            {
+                page = new SlottedPage(_pageManager.ReadPage(pageNumber));
+                slotNumber = page.InsertRow(rowDataEnumerator.Current);
+                if (slotNumber != -1)
+                {
+                    _pageManager.WritePage(pageNumber, page.GetPageData());
+                    yield return new RowId(pageNumber, slotNumber);
+                    createNew = false;
+                    break;
+                }
+            }
+
+            if (createNew)
+            {
+                pageNumber = _pageManager.AllocatePage();
+                var rawPage = _pageManager.ReadPage(pageNumber);
+                SlottedPage.Initialize(rawPage);
+                page = new SlottedPage(rawPage);
+                slotNumber = page.InsertRow(rowDataEnumerator.Current);
+                _pageManager.WritePage(pageNumber, page.GetPageData());
+                yield return new RowId(pageNumber, slotNumber);
+            }
+        } while (rowDataEnumerator.MoveNext());
     }
 
     public byte[]? GetRow(RowId rowId)

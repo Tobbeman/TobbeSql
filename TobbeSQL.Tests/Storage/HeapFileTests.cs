@@ -99,4 +99,24 @@ public class HeapFileTests : IDisposable
 
         Assert.Null(_heapFile.GetRow(rowId));
     }
+
+    [Fact]
+    public void InsertBatchAndGetRows_ReturnsSameData()
+    {
+        var rowData = new List<byte[]>
+        {
+            new byte[] { 1, 2, 3, 4, 5 },
+            new byte[] { 6, 7, 8, 9, 10 },
+        };
+
+        var rowIds = _heapFile.InsertBatch(rowData).ToList();
+        for (var i = 0; i < rowIds.Count; i++)
+        {
+            var result = _heapFile.GetRow(rowIds[i]);
+            Assert.Equal(rowData[i], result);
+        }
+
+        var scanResults = _heapFile.Scan().ToList();
+        Assert.Equal(rowData.Count, scanResults.Count);
+    }
 }

@@ -72,6 +72,16 @@ public class QueryExecutorTests : IDisposable
     }
 
     [Fact]
+    public void InsertBulk_SelectAll_ReturnsAllRows()
+    {
+        Run("CREATE TABLE users (id INT, name VARCHAR)");
+        Run("INSERT INTO users (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie')");
+        var result = Run("SELECT * FROM users");
+
+        Assert.Equal(3, result.Rows.Count);
+    }
+
+    [Fact]
     public void SelectWithWhere_ReturnsOnlyMatchingRows()
     {
         Run("CREATE TABLE users (id INT, name VARCHAR)");
