@@ -160,6 +160,18 @@ public class Catalog
         Save();
     }
 
+    public void DropTable(string tableName)
+    {
+        if (!_tables.TryGetValue(tableName, out var table))
+        {
+            throw new Exception($"No such table to drop: {tableName}");
+        }
+
+        _tables.Remove(tableName);
+        File.Delete(table.dataFilePath);
+        Save();
+    }
+
     record CatalogFile
     {
         public required List<CatalogEntry> Tables { get; set; } = [];
