@@ -26,8 +26,7 @@ public class HeapFile
         do
         {
             SlottedPage page;
-            int slotNumber;
-            var createNew = true;
+            var slotNumber = -1;
             for (; pageNumber < _pageManager.PageCount; pageNumber++)
             {
                 page = new SlottedPage(_pageManager.ReadPage(pageNumber));
@@ -36,21 +35,22 @@ public class HeapFile
                 {
                     _pageManager.WritePage(pageNumber, page.GetPageData());
                     yield return new RowId(pageNumber, slotNumber);
-                    createNew = false;
                     break;
                 }
             }
 
-            if (createNew)
+            if (slotNumber != -1)
             {
-                pageNumber = _pageManager.AllocatePage();
-                var rawPage = _pageManager.ReadPage(pageNumber);
-                SlottedPage.Initialize(rawPage);
-                page = new SlottedPage(rawPage);
-                slotNumber = page.InsertRow(rowDataEnumerator.Current);
-                _pageManager.WritePage(pageNumber, page.GetPageData());
-                yield return new RowId(pageNumber, slotNumber);
+                continue;
             }
+
+            pageNumber = _pageManager.AllocatePage();
+            var rawPage = _pageManager.ReadPage(pageNumber);
+            SlottedPage.Initialize(rawPage);
+            page = new SlottedPage(rawPage);
+            slotNumber = page.InsertRow(rowDataEnumerator.Current);
+            _pageManager.WritePage(pageNumber, page.GetPageData());
+            yield return new RowId(pageNumber, slotNumber);
         } while (rowDataEnumerator.MoveNext());
     }
 
