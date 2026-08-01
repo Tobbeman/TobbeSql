@@ -174,7 +174,12 @@ public class SqlParser
         }
 
         var tableName = Expect(TokenType.Identifier).Value;
-        return new SelectStatement(columns, tableName, GetOptionalWhereExpression());
+        return new SelectStatement(
+            columns,
+            tableName,
+            GetOptionalWhereExpression(),
+            GetOptionalLimitExpression()
+        );
     }
 
     private DeleteStatement ParseDelete()
@@ -270,6 +275,21 @@ public class SqlParser
         {
             Advance();
             return ParseExpression();
+        }
+        return null;
+    }
+
+    private int? GetOptionalLimitExpression()
+    {
+        if (HasMore() && Current().Type == TokenType.Limit)
+        {
+            Advance();
+            var value = Expect(TokenType.Number).Value;
+            if (!int.TryParse(value, out var intValue))
+            {
+                throw new Exception($"Failed to parse int for limit: {value}");
+            }
+            return intValue;
         }
         return null;
     }

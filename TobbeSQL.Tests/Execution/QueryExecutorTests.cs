@@ -174,4 +174,16 @@ public class QueryExecutorTests : IDisposable
         Run("CREATE TABLE users (id INT, name VARCHAR)");
         Run("DROP TABLE users");
     }
+
+    [Fact]
+    public void Select_Limit()
+    {
+        Run("CREATE TABLE users (id INT, name VARCHAR)");
+        Run("INSERT INTO users (id, name) VALUES (1, 'Alice')");
+        Run("INSERT INTO users (id, name) VALUES (2, 'Bob')");
+        var result = Run("SELECT name FROM users LIMIT 1");
+
+        Assert.Single(result.Rows);
+        Assert.Single(result.Rows[0]);
+    }
 }

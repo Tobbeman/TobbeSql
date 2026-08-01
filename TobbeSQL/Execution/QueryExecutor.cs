@@ -147,12 +147,12 @@ public class QueryExecutor(Catalog catalog)
         var columns =
             stmt.Columns[0] == "*" ? schema.Columns.Select(c => c.Name).ToList() : stmt.Columns;
 
-        var rowFinder = new RowFinder(catalog);
-        return new QueryResult
+        var rows = new RowFinder(catalog).FindRows(stmt.TableName, columns, stmt.WhereClause);
+        if (stmt.Limit is not null)
         {
-            Columns = columns,
-            Rows = rowFinder.FindRows(stmt.TableName, columns, stmt.WhereClause).ToList(),
-        };
+            rows = rows.Take(stmt.Limit.Value);
+        }
+        return new QueryResult { Columns = columns, Rows = rows.ToList() };
     }
 
     private QueryResult ExecuteDelete(DeleteStatement stmt)

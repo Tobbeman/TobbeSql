@@ -147,6 +147,7 @@ public class Tokenizer
             "delete" => TokenType.Delete,
             "create" => TokenType.Create,
             "count" => TokenType.Count,
+            "limit" => TokenType.Limit,
             "table" => TokenType.Table,
             "unique" => TokenType.Unique,
             "index" => TokenType.Index,
