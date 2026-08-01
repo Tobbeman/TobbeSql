@@ -143,61 +143,16 @@ public class QueryExecutor(Catalog catalog)
 
     private QueryResult ExecuteSelect(SelectStatement stmt)
     {
-        var (schema, dataFilePath) = catalog.GetTable(stmt.TableName);
-        using var pageManager = new PageManager(dataFilePath);
-        var heapFile = new HeapFile(pageManager);
-        var serializer = new RowSerializer();
-
+        var (schema, _) = catalog.GetTable(stmt.TableName);
         var columns =
             stmt.Columns[0] == "*" ? schema.Columns.Select(c => c.Name).ToList() : stmt.Columns;
 
-        var columnIndices = columns
-            .Select(name => schema.Columns.FindIndex(c => c.Name == name))
-            .ToArray();
-
-        object[] Project(object[] values) => [.. columnIndices.Select(i => values[i])];
-
-        var result = new QueryResult { Columns = columns };
-
-        var predicate = stmt.WhereClause is not null
-            ? ExpressionEvaluator.Compile(stmt.WhereClause, schema)
-            : (_) => true;
-
-        if (stmt.WhereClause is not null)
+        var rowFinder = new RowFinder(catalog);
+        return new QueryResult
         {
-            var (MetaData, Value) = schema
-                .Columns.Select(c =>
-                    (
-                        MetaData: catalog.GetIndex(schema.TableName, c.Name),
-                        Value: ExpressionEvaluator.IndexComparison(stmt.WhereClause, c.Name)
-                    )
-                )
-                .FirstOrDefault(x => x.MetaData is not null && x.Value is not null);
-
-            if (MetaData is not null)
-            {
-                using var indexPM = new PageManager(MetaData.Value.DataFilePath);
-                var tree = new BTree(indexPM);
-                foreach (var rowId in tree.Search((int)Value!))
-                {
-                    var data = heapFile.GetRow(rowId);
-                    result.Rows.Add(Project(serializer.Deserialize(schema, data!)));
-                }
-                return result;
-            }
-        }
-
-        foreach (var (rowId, data) in heapFile.Scan())
-        {
-            var values = serializer.Deserialize(schema, data);
-            if (stmt.WhereClause is not null && !predicate(values))
-            {
-                continue;
-            }
-
-            result.Rows.Add(Project(values));
-        }
-        return result;
+            Columns = columns,
+            Rows = rowFinder.FindRows(stmt.TableName, columns, stmt.WhereClause).ToList(),
+        };
     }
 
     private QueryResult ExecuteDelete(DeleteStatement stmt)
@@ -295,5 +250,65 @@ public class QueryExecutor(Catalog catalog)
     {
         catalog.DropIndex(stmt.IndexName);
         return new QueryResult { Message = $"Index dropped: {stmt.IndexName}" };
+    }
+}
+
+internal class RowFinder(Catalog catalog)
+{
+    public IEnumerable<object[]> FindRows(
+        string tableName,
+        List<string> columns,
+        Expression? whereExpression
+    )
+    {
+        var (schema, dataFilePath) = catalog.GetTable(tableName);
+        using var pageManager = new PageManager(dataFilePath);
+        var heapFile = new HeapFile(pageManager);
+        var serializer = new RowSerializer();
+
+        var columnIndices = columns
+            .Select(name => schema.Columns.FindIndex(c => c.Name == name))
+            .ToArray();
+
+        object[] Project(object[] values) => [.. columnIndices.Select(i => values[i])];
+
+        var predicate = whereExpression is not null
+            ? ExpressionEvaluator.Compile(whereExpression, schema)
+            : (_) => true;
+
+        if (whereExpression is not null)
+        {
+            var (MetaData, Value) = columns
+                .Select(c =>
+                    (
+                        MetaData: catalog.GetIndex(schema.TableName, c),
+                        Value: ExpressionEvaluator.IndexComparison(whereExpression, c)
+                    )
+                )
+                .FirstOrDefault(x => x.MetaData is not null && x.Value is not null);
+
+            if (MetaData is not null)
+            {
+                using var indexPM = new PageManager(MetaData.Value.DataFilePath);
+                var tree = new BTree(indexPM);
+                foreach (var rowId in tree.Search((int)Value!))
+                {
+                    var data = heapFile.GetRow(rowId);
+                    yield return Project(serializer.Deserialize(schema, data!));
+                }
+                yield break;
+            }
+        }
+
+        foreach (var (rowId, data) in heapFile.Scan())
+        {
+            var values = serializer.Deserialize(schema, data);
+            if (whereExpression is not null && !predicate(values))
+            {
+                continue;
+            }
+
+            yield return Project(values);
+        }
     }
 }
