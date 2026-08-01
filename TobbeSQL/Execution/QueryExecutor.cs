@@ -1,3 +1,4 @@
+using System.Net.Mail;
 using TobbeSQL.Parser.Ast;
 using TobbeSQL.Storage;
 
@@ -11,7 +12,6 @@ public class QueryExecutor(Catalog catalog)
         {
             CreateTableStatement stmt => ExecuteCreateTable(stmt),
             DropTableStatement stmt => ExecuteDropTable(stmt),
-            CountStatement stmt => ExecuteCount(stmt),
             InsertStatement stmt => ExecuteInsert(stmt),
             SelectStatement stmt => ExecuteSelect(stmt),
             DeleteStatement stmt => ExecuteDelete(stmt),
@@ -31,35 +31,6 @@ public class QueryExecutor(Catalog catalog)
     {
         catalog.DropTable(stmt.TableName);
         return new QueryResult { Message = $"Table dropped: {stmt.TableName}" };
-    }
-
-    private QueryResult ExecuteCount(CountStatement stmt)
-    {
-        var (schema, dataFilePath) = catalog.GetTable(stmt.TableName);
-        var predicate = stmt.WhereClause is not null
-            ? ExpressionEvaluator.Compile(stmt.WhereClause, schema)
-            : null;
-        using var pageManager = new PageManager(dataFilePath);
-        var heapFile = new HeapFile(pageManager);
-
-        var serializer = new RowSerializer();
-        var counter = 0;
-        foreach (var (rowId, data) in heapFile.Scan())
-        {
-            if (predicate is null || predicate(serializer.Deserialize(schema, data)))
-            {
-                counter++;
-            }
-        }
-
-        return new QueryResult
-        {
-            Columns = ["count"],
-            Rows =
-            [
-                [counter],
-            ],
-        };
     }
 
     private QueryResult ExecuteInsert(InsertStatement stmt)
@@ -144,10 +115,66 @@ public class QueryExecutor(Catalog catalog)
     private QueryResult ExecuteSelect(SelectStatement stmt)
     {
         var (schema, _) = catalog.GetTable(stmt.TableName);
-        var columns =
-            stmt.Columns[0] == "*" ? schema.Columns.Select(c => c.Name).ToList() : stmt.Columns;
+        var columns = new List<string>();
+        if (stmt.GroupByColumns is not null)
+        {
+            columns =
+            [
+                .. stmt
+                    .Columns.Where(c => c.Type == ColumnExpressionType.Column)
+                    .Select(c => c.Identifier),
+            ];
+        }
+        else if (stmt.Columns.Count == 1 && stmt.Columns[0].Type == ColumnExpressionType.Count)
+        {
+            columns = [schema.Columns.First().Name];
+        }
+        else
+        {
+            foreach (var column in stmt.Columns)
+            {
+                if (column.Identifier == "*")
+                {
+                    columns.AddRange(schema.Columns.Select(c => c.Name));
+                }
+                else
+                {
+                    columns.Add(column.Identifier);
+                }
+            }
+        }
 
         var rows = new RowFinder(catalog).FindRows(stmt.TableName, columns, stmt.WhereClause);
+
+        if (stmt.Columns.Count == 1 && stmt.Columns[0].Type == ColumnExpressionType.Count)
+        {
+            return new QueryResult
+            {
+                Columns = ["count"],
+                Rows =
+                [
+                    [rows.Count()],
+                ],
+            };
+        }
+        if (stmt.GroupByColumns is not null)
+        {
+            var aggregates = new Dictionary<GroupByKey, GroupByAggregate>();
+            var groupByIndeces = stmt
+                .GroupByColumns.Select(name => schema.Columns.FindIndex(c => c.Name == name))
+                .ToArray();
+            foreach (var row in rows)
+            {
+                var key = new GroupByKey(groupByIndeces.Select(gbi => row[gbi]).ToArray());
+                aggregates.TryGetValue(key, out var aggregate);
+                aggregate ??= new GroupByAggregate();
+                aggregate.Count++;
+                aggregates[key] = aggregate;
+            }
+
+            rows = aggregates.Select(a => a.Key.Values.Append(a.Value.Count).ToArray());
+        }
+
         if (stmt.Limit is not null)
         {
             rows = rows.Take(stmt.Limit.Value);
@@ -311,4 +338,28 @@ internal class RowFinder(Catalog catalog)
             yield return Project(values);
         }
     }
+}
+
+public record struct GroupByKey(object[] Values)
+{
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        foreach (var value in Values)
+        {
+            hash.Add(value);
+        }
+
+        return hash.ToHashCode();
+    }
+
+    public bool Equals(GroupByKey other)
+    {
+        return Values.SequenceEqual(other.Values);
+    }
+}
+
+public record GroupByAggregate
+{
+    public int Count { get; set; }
 }

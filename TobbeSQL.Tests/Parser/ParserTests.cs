@@ -61,7 +61,7 @@ public class ParserTests
         var stmt = Parse("SELECT * FROM users") as SelectStatement;
 
         Assert.NotNull(stmt);
-        Assert.Equal(new List<string> { "*" }, stmt.Columns);
+        Assert.Equal(new List<string> { "*" }, stmt.Columns.Select(c => c.Identifier));
         Assert.Equal("users", stmt.TableName);
         Assert.Null(stmt.WhereClause);
     }
@@ -72,7 +72,7 @@ public class ParserTests
         var stmt = Parse("SELECT name FROM users WHERE id = 1") as SelectStatement;
 
         Assert.NotNull(stmt);
-        Assert.Equal(new List<string> { "name" }, stmt.Columns);
+        Assert.Equal(new List<string> { "name" }, stmt.Columns.Select(c => c.Identifier));
         Assert.Equal("users", stmt.TableName);
 
         var where = stmt.WhereClause as ComparisonExpression;

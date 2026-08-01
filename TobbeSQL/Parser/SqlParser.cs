@@ -138,38 +138,31 @@ public class SqlParser
     {
         Expect(TokenType.Select);
 
-        var columns = new List<string>();
+        var columns = new List<ColumnExpression>();
 
-        if (Current().Type == TokenType.Count)
+        var parse = true;
+        while (parse)
         {
-            Advance();
-            Expect(TokenType.LeftParen);
-            Expect(TokenType.Star);
-            Expect(TokenType.RightParen);
-            Expect(TokenType.From);
-
-            return new CountStatement(
-                Expect(TokenType.Identifier).Value,
-                GetOptionalWhereExpression()
-            );
-        }
-
-        if (Current().Type == TokenType.Star)
-        {
-            columns.Add("*");
-            Advance();
-            Expect(TokenType.From);
-        }
-        else
-        {
-            while (true)
+            var token = Advance();
+            switch (token.Type)
             {
-                var columnName = Expect(TokenType.Identifier).Value;
-                columns.Add(columnName);
-                if (Expect(TokenType.Comma, TokenType.From).Type == TokenType.From)
-                {
+                case TokenType.Star:
+                case TokenType.Identifier:
+                    columns.Add(new(ColumnExpressionType.Column, token.Value));
                     break;
-                }
+                case TokenType.Count:
+                    Expect(TokenType.LeftParen);
+                    var column = Expect(TokenType.Identifier, TokenType.Star);
+                    Expect(TokenType.RightParen);
+                    columns.Add(new(ColumnExpressionType.Count, column.Value));
+                    break;
+                case TokenType.Comma:
+                    break;
+                case TokenType.From:
+                    parse = false;
+                    break;
+                default:
+                    throw new Exception($"Could not parse selected column: {token.Type}");
             }
         }
 
@@ -178,6 +171,7 @@ public class SqlParser
             columns,
             tableName,
             GetOptionalWhereExpression(),
+            GetOptionalGroupByExpression(),
             GetOptionalLimitExpression()
         );
     }
@@ -277,6 +271,29 @@ public class SqlParser
             return ParseExpression();
         }
         return null;
+    }
+
+    private List<string>? GetOptionalGroupByExpression()
+    {
+        if (!HasMore() || Current().Type != TokenType.Group)
+        {
+            return null;
+        }
+        var groupBy = new List<string>();
+
+        Advance();
+        Expect(TokenType.By);
+        while (true)
+        {
+            groupBy.Add(Expect(TokenType.Identifier).Value);
+            if (!HasMore() || Current().Type != TokenType.Comma)
+            {
+                break;
+            }
+            Advance();
+        }
+
+        return groupBy;
     }
 
     private int? GetOptionalLimitExpression()

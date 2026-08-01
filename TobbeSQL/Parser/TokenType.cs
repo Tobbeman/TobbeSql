@@ -12,6 +12,8 @@ public enum TokenType
     Delete,
     Create,
     Count,
+    Group,
+    By,
     Limit,
     Table,
     Unique,

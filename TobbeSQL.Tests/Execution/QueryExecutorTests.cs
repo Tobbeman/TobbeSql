@@ -186,4 +186,20 @@ public class QueryExecutorTests : IDisposable
         Assert.Single(result.Rows);
         Assert.Single(result.Rows[0]);
     }
+
+    [Fact]
+    public void Select_GroupBy()
+    {
+        Run("CREATE TABLE test (firstName VARCHAR, lastName VARCHAR, age int)");
+        Run("INSERT INTO test (firstName, lastName, age) VALUES ('Alice', 'Ohlsson', 10)");
+        Run("INSERT INTO test (firstName, lastName, age) VALUES ('Alice', 'Ohlsson', 15)");
+        Run("INSERT INTO test (firstName, lastName, age) VALUES ('Alice', 'Fredriksson', 15)");
+        var result = Run(
+            "SELECT firstName, lastName, count(*) FROM test GROUP BY firstName, lastName"
+        );
+
+        Assert.Equal(2, result.Rows.Count);
+        Assert.Equal(new object[] { "Alice", "Ohlsson", 2 }, result.Rows[0]);
+        Assert.Equal(new object[] { "Alice", "Fredriksson", 1 }, result.Rows[1]);
+    }
 }
